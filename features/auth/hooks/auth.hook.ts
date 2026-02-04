@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { useAuthStore } from '../../../store/auth.store';
 import { LoginRequest } from '../interfaces/login.interface';
 import { SignupRequest } from '../interfaces/signup.interface';
+import { Usuario } from '../interfaces/usuario.interface';
 import { AuthService } from '../services/auth.service';
 
 const authService = new AuthService();
@@ -180,5 +181,44 @@ export function useLogout() {
     logout: handleLogout,
     loading,
     error,
+  };
+}
+
+/**
+ * Hook para obtener y manejar los datos del perfil del usuario.
+ * Obtiene la información actualizada del usuario desde el backend.
+ */
+export function useProfile() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+
+  const fetchProfile = async () => {
+    if (!accessToken) {
+      setError('No hay sesión activa');
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+    try {
+      const userData = await authService.getCurrentUser(accessToken);
+      setUsuario(userData);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al obtener información del usuario';
+      setError(message);
+      console.error('Error en fetchProfile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    usuario,
+    loading,
+    error,
+    fetchProfile,
+    refetch: fetchProfile,
   };
 }

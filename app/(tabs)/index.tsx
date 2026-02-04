@@ -1,6 +1,7 @@
 import { useLogout } from '@/features/auth/hooks/auth.hook';
 import { useAuthStore } from '@/store/auth.store';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { IconButton, Text } from 'react-native-paper';
@@ -99,7 +100,13 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.menuContent}>
-          <TouchableOpacity style={styles.menuItem} onPress={closeMenu}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              closeMenu();
+              router.push('/profile' as any);
+            }}
+          >
             <MaterialCommunityIcons name="account-circle" size={24} color="#333333" style={styles.menuIcon} />
             <Text variant="bodyLarge" style={styles.menuItemText}>Mi perfil</Text>
           </TouchableOpacity>

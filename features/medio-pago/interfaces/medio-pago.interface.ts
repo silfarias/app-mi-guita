@@ -11,6 +11,12 @@ export interface MedioPago {
   tipo: TipoMedioPago;
 }
 
+export interface MedioPagoElemento {
+  id: number;
+  monto: string;
+  medioPago: MedioPago;
+}
+
 export interface MedioPagoSearchParams {
   id?: number;
   nombre?: string;

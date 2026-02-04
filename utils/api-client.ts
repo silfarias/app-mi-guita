@@ -45,3 +45,35 @@ export async function fetchAuthGet<T>(
 
   return response.json();
 }
+
+export async function fetchAuthPost<T, B = unknown>(
+  token: string,
+  path: string,
+  body: B,
+  options: { defaultError: string }
+): Promise<T> {
+  const url = path.startsWith("http") ? path : `${API_URL}${path}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) throw new Error(UNAUTHORIZED_MESSAGE);
+    let message = options.defaultError;
+    try {
+      const data = await response.json();
+      message = data?.errorDetails?.message ?? message;
+    } catch {
+      message = `Error ${response.status}: ${response.statusText}`;
+    }
+    throw new Error(message);
+  }
+
+  return response.json();
+}

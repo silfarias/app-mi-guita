@@ -1,98 +1,234 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useLogout } from '@/features/auth/hooks/auth.hook';
+import { useAuthStore } from '@/store/auth.store';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { IconButton, Text } from 'react-native-paper';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const translateX = useSharedValue(300); // Ancho del menú (inicialmente fuera de la pantalla)
+  const opacity = useSharedValue(0);
+  const insets = useSafeAreaInsets();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const user = useAuthStore((state) => state.usuario?.persona?.nombre || '');
+  const { logout, loading: logoutLoading } = useLogout();
+
+  const toggleMenu = () => {
+    const newState = !isMenuOpen;
+    setIsMenuOpen(newState);
+
+    if (newState) {
+      // Abrir menú - animación rápida y fluida
+      translateX.value = withTiming(0, { duration: 200 });
+      opacity.value = withTiming(0.5, { duration: 200 });
+    } else {
+      // Cerrar menú - animación rápida y fluida
+      translateX.value = withTiming(300, { duration: 200 });
+      opacity.value = withTiming(0, { duration: 200 });
+    }
+  };
+
+  const closeMenu = () => {
+    if (isMenuOpen) {
+      setIsMenuOpen(false);
+      translateX.value = withTiming(300, { duration: 200 });
+      opacity.value = withTiming(0, { duration: 200 });
+    }
+  };
+
+  const menuAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: translateX.value }],
+    };
+  });
+
+  const backdropAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+    };
+  });
+
+  return (
+    <View style={styles.container}>
+      {/* Header con botón hamburguesa */}
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <View style={styles.headerContent}>
+          <Text variant="headlineSmall" style={styles.title}>
+            Hola, {user}
+          </Text>
+          <IconButton
+            icon="menu"
+            size={28}
+            onPress={toggleMenu}
+            style={styles.menuButton}
+          />
+        </View>
+      </View>
+
+      {/* Contenido principal */}
+      <View style={styles.content}>
+        <Text variant="bodyLarge" style={styles.text}>
+          Contenido principal
+        </Text>
+      </View>
+
+      {/* Backdrop oscuro */}
+      {isMenuOpen && (
+        <TouchableWithoutFeedback onPress={closeMenu}>
+          <Animated.View style={[styles.backdrop, backdropAnimatedStyle]} />
+        </TouchableWithoutFeedback>
+      )}
+
+      {/* Menú lateral */}
+      {isMenuOpen && (
+      <Animated.View style={[styles.menu, menuAnimatedStyle, { paddingTop: insets.top }]}>
+        <View style={styles.menuHeader}>
+          <Text variant="headlineSmall" style={styles.menuTitle}>
+            Opciones
+          </Text>
+          <TouchableOpacity onPress={closeMenu} style={styles.closeButton} activeOpacity={0.7}>
+            <MaterialCommunityIcons name="window-close" size={28} color="#333333" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.menuContent}>
+          <TouchableOpacity style={styles.menuItem} onPress={closeMenu}>
+            <MaterialCommunityIcons name="account-circle" size={24} color="#333333" style={styles.menuIcon} />
+            <Text variant="bodyLarge" style={styles.menuItemText}>Mi perfil</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={closeMenu}>
+            <MaterialCommunityIcons name="swap-horizontal" size={24} color="#333333" style={styles.menuIcon} />
+            <Text variant="bodyLarge" style={styles.menuItemText}>Mis transacciones</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.menuItem} 
+            onPress={() => {
+              closeMenu();
+              logout();
+            }}
+            disabled={logoutLoading}
+          >
+            <MaterialCommunityIcons name="logout" size={24} color="#D32F2F" style={styles.menuIcon} />
+            <Text variant="bodyLarge" style={[styles.menuItemText, styles.logoutText]}>
+              {logoutLoading ? 'Cerrando sesión...' : 'Cerrar sesión'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  title: {
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  menuButton: {
+    margin: 0,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  text: {
+    color: '#666666',
+    textAlign: 'center',
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000000',
+    zIndex: 1,
+  },
+  menu: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 250,
+    backgroundColor: '#FFFFFF',
+    zIndex: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: -2,
+      height: 0,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  menuTitle: {
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  menuContent: {
+    flex: 1,
+    paddingTop: 16,
+  },
+  closeButton: {
+    padding: 8,
+    marginRight: -8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 44,
+    minHeight: 44,
+    backgroundColor: 'transparent',
+  },
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  menuIcon: {
+    marginRight: 16,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  menuItemText: {
+    color: '#333333',
+    flex: 1,
+  },
+  logoutText: {
+    color: '#D32F2F',
   },
 });

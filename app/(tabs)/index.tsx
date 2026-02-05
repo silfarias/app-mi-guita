@@ -24,6 +24,7 @@ export default function HomeScreen() {
   const [isConfirmacionModalVisible, setIsConfirmacionModalVisible] = useState(false);
   const [movimientoSeleccionado, setMovimientoSeleccionado] = useState<number | null>(null);
   const [menuVisible, setMenuVisible] = useState<number | null>(null);
+  const [movimientosExpandidos, setMovimientosExpandidos] = useState<Set<number>>(new Set());
   const translateX = useSharedValue(300);
   const opacity = useSharedValue(0);
   const insets = useSafeAreaInsets();
@@ -125,6 +126,18 @@ export default function HomeScreen() {
         // El error ya se maneja en el hook
       }
     }
+  };
+
+  const toggleMovimientoExpandido = (movimientoId: number) => {
+    setMovimientosExpandidos((prev) => {
+      const nuevo = new Set(prev);
+      if (nuevo.has(movimientoId)) {
+        nuevo.delete(movimientoId);
+      } else {
+        nuevo.add(movimientoId);
+      }
+      return nuevo;
+    });
   };
 
   return (
@@ -236,92 +249,115 @@ export default function HomeScreen() {
             <Text variant="titleMedium" style={styles.sectionTitle}>
               Movimientos ({movimientosDelMes.length})
             </Text>
-            {movimientosDelMes.map((movimiento) => (
-              <Card key={movimiento.id} style={styles.movimientoCard}>
-                <Card.Content>
-                  <View style={styles.movimientoHeader}>
-                    <View style={styles.movimientoLeft}>
-                      <View
-                        style={[
-                          styles.categoriaIconContainer,
-                          { backgroundColor: `${movimiento.categoria.color}20` },
-                        ]}
-                      >
-                        <MaterialCommunityIcons
-                          name={movimiento.categoria.icono as any}
-                          size={24}
-                          color={movimiento.categoria.color}
-                        />
-                      </View>
-                      <View style={styles.movimientoInfo}>
-                        <Text variant="bodyLarge" style={styles.movimientoDescripcion}>
-                          {movimiento.descripcion}
-                        </Text>
-                        <View style={styles.movimientoMeta}>
-                          <Text variant="bodySmall" style={styles.movimientoCategoria}>
-                            {movimiento.categoria.nombre}
-                          </Text>
-                          <Text variant="bodySmall" style={styles.movimientoFecha}>
-                            {formatDate(movimiento.fecha)}
-                          </Text>
+            {movimientosDelMes.map((movimiento) => {
+              const isExpanded = movimientosExpandidos.has(movimiento.id);
+              return (
+                <TouchableOpacity
+                  key={movimiento.id}
+                  activeOpacity={0.7}
+                  onPress={() => toggleMovimientoExpandido(movimiento.id)}
+                >
+                  <Card style={styles.movimientoCard}>
+                    <Card.Content>
+                      <View style={styles.movimientoHeader}>
+                        <View style={styles.movimientoLeft}>
+                          <View
+                            style={[
+                              styles.categoriaIconContainer,
+                              { backgroundColor: `${movimiento.categoria.color}20` },
+                            ]}
+                          >
+                            <MaterialCommunityIcons
+                              name={movimiento.categoria.icono as any}
+                              size={24}
+                              color={movimiento.categoria.color}
+                            />
+                          </View>
+                          <View style={styles.movimientoInfo}>
+                            <Text
+                              variant="bodyLarge"
+                              style={styles.movimientoDescripcion}
+                              numberOfLines={isExpanded ? undefined : 2}
+                              ellipsizeMode="tail"
+                            >
+                              {movimiento.descripcion}
+                            </Text>
+                            <View style={styles.movimientoMeta}>
+                              <Text variant="bodySmall" style={styles.movimientoCategoria}>
+                                {movimiento.categoria.nombre}
+                              </Text>
+                              <Text variant="bodySmall" style={styles.movimientoFecha}>
+                                {formatDate(movimiento.fecha)}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                        <View style={styles.movimientoRight}>
+                          <View style={styles.movimientoRightTop}>
+                            <Text
+                              variant="titleMedium"
+                              style={[
+                                styles.movimientoMonto,
+                                movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO
+                                  ? styles.movimientoMontoEgreso
+                                  : styles.movimientoMontoIngreso,
+                              ]}
+                            >
+                              {movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO ? '-' : '+'}
+                              {formatCurrency(movimiento.monto)}
+                            </Text>
+                            <Menu
+                              visible={menuVisible === movimiento.id}
+                              onDismiss={() => setMenuVisible(null)}
+                              anchor={
+                                <TouchableOpacity
+                                  onPress={(e) => {
+                                    e.stopPropagation();
+                                    setMenuVisible(movimiento.id);
+                                  }}
+                                  style={styles.menuButton}
+                                >
+                                  <MaterialCommunityIcons name="dots-vertical" size={24} color="#666666" />
+                                </TouchableOpacity>
+                              }
+                              contentStyle={styles.menuDropdownContent}
+                            >
+                              <Menu.Item
+                                onPress={() => {
+                                  setMenuVisible(null);
+                                  handleEditarMovimiento(movimiento.id);
+                                }}
+                                title="Editar"
+                                leadingIcon="pencil"
+                              />
+                              <Menu.Item
+                                onPress={() => {
+                                  setMenuVisible(null);
+                                  handleEliminarMovimiento(movimiento.id);
+                                }}
+                                title="Eliminar"
+                                leadingIcon="delete"
+                                titleStyle={styles.deleteMenuItem}
+                              />
+                            </Menu>
+                          </View>
+                          <View style={styles.movimientoMedioPago}>
+                            <MaterialCommunityIcons
+                              name={getMedioPagoIcon(movimiento.medioPago.tipo) as any}
+                              size={16}
+                              color="#666666"
+                            />
+                            <Text variant="bodySmall" style={styles.movimientoMedioPagoText}>
+                              {movimiento.medioPago.nombre}
+                            </Text>
+                          </View>
                         </View>
                       </View>
-                    </View>
-                    <View style={styles.movimientoRight}>
-                      <View style={styles.movimientoRightTop}>
-                        <Text
-                          variant="titleMedium"
-                          style={[
-                            styles.movimientoMonto,
-                            movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO
-                              ? styles.movimientoMontoEgreso
-                              : styles.movimientoMontoIngreso,
-                          ]}
-                        >
-                          {movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO ? '-' : '+'}
-                          {formatCurrency(movimiento.monto)}
-                        </Text>
-                        <Menu
-                          visible={menuVisible === movimiento.id}
-                          onDismiss={() => setMenuVisible(null)}
-                          anchor={
-                            <TouchableOpacity
-                              onPress={() => setMenuVisible(movimiento.id)}
-                              style={styles.menuButton}
-                            >
-                              <MaterialCommunityIcons name="dots-vertical" size={24} color="#666666" />
-                            </TouchableOpacity>
-                          }
-                          contentStyle={styles.menuDropdownContent}
-                        >
-                          <Menu.Item
-                            onPress={() => handleEditarMovimiento(movimiento.id)}
-                            title="Editar"
-                            leadingIcon="pencil"
-                          />
-                          <Menu.Item
-                            onPress={() => handleEliminarMovimiento(movimiento.id)}
-                            title="Eliminar"
-                            leadingIcon="delete"
-                            titleStyle={styles.deleteMenuItem}
-                          />
-                        </Menu>
-                      </View>
-                      <View style={styles.movimientoMedioPago}>
-                        <MaterialCommunityIcons
-                          name={getMedioPagoIcon(movimiento.medioPago.tipo) as any}
-                          size={16}
-                          color="#666666"
-                        />
-                        <Text variant="bodySmall" style={styles.movimientoMedioPagoText}>
-                          {movimiento.medioPago.nombre}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </Card.Content>
-              </Card>
-            ))}
+                    </Card.Content>
+                  </Card>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -596,7 +632,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   menuButton: {
-    padding: 4,
+    padding: 2,
   },
   menuDropdownContent: {
     backgroundColor: '#FFFFFF',

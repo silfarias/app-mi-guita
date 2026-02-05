@@ -198,3 +198,51 @@ export function useDeleteMovimiento() {
     deleteMovimiento,
   };
 }
+
+/**
+ * Hook para obtener movimientos con filtros.
+ * Retorna los movimientos filtrados según los parámetros proporcionados.
+ */
+export function useMovimientosConFiltros(initialFiltros?: MovimientoFiltros) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { loading, error, setError, run } = useAsyncRun();
+  const [data, setData] = useState<MovimientosPorInfoSearchResponse | null>(null);
+  const [filtros, setFiltros] = useState<MovimientoFiltros | undefined>(initialFiltros);
+
+  const fetchMovimientos = async (nuevosFiltros?: MovimientoFiltros) => {
+    if (!accessToken) {
+      setError('No hay sesión activa');
+      return;
+    }
+    const filtrosAplicar = nuevosFiltros ?? filtros;
+    await run(
+      async () => {
+        const response = await movimientoService.search(accessToken, filtrosAplicar);
+        setData(response);
+        return response;
+      },
+      { errorFallback: 'Error al obtener los movimientos', logLabel: 'fetchMovimientosConFiltros' }
+    );
+  };
+
+  const aplicarFiltros = (nuevosFiltros: MovimientoFiltros) => {
+    setFiltros(nuevosFiltros);
+    fetchMovimientos(nuevosFiltros);
+  };
+
+  const limpiarFiltros = () => {
+    setFiltros(undefined);
+    fetchMovimientos(undefined);
+  };
+
+  return {
+    data,
+    loading,
+    error,
+    filtros,
+    fetchMovimientos,
+    aplicarFiltros,
+    limpiarFiltros,
+    refetch: fetchMovimientos,
+  };
+}

@@ -1,3 +1,4 @@
+import { InfoInicialModal } from '@/components/info-inicial-modal';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { useAuthStore } from '@/store/auth.store';
@@ -15,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function InfoInicialMesScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const translateX = useSharedValue(300); // Ancho del menú (inicialmente fuera de la pantalla)
   const opacity = useSharedValue(0);
   const insets = useSafeAreaInsets();
@@ -49,6 +51,12 @@ export default function InfoInicialMesScreen() {
   };
 
   const infoInicialData = infoInicial && infoInicial.length > 0 ? infoInicial[0] : null;
+
+  const handleEdit = () => {
+    if (infoInicialData) {
+      setIsEditModalVisible(true);
+    }
+  };
 
   const toggleMenu = () => {
     const newState = !isMenuOpen;
@@ -142,6 +150,12 @@ export default function InfoInicialMesScreen() {
                   </Text>
                 </View>
               </View>
+              <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
+                <MaterialCommunityIcons name="pencil" size={20} color="#6CB4EE" />
+                <Text variant="bodyMedium" style={styles.editButtonText}>
+                  Editar
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Card de Monto Total */}
@@ -286,6 +300,16 @@ export default function InfoInicialMesScreen() {
         </View>
       </Animated.View>
       )}
+
+      {/* Modal de Edición */}
+      <InfoInicialModal
+        visible={isEditModalVisible}
+        onDismiss={() => setIsEditModalVisible(false)}
+        infoInicialId={infoInicialData?.id || null}
+        onSuccess={() => {
+          fetch();
+        }}
+      />
     </View>
   );
 }
@@ -562,5 +586,18 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#D32F2F',
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#E3F2FD',
+  },
+  editButtonText: {
+    color: '#6CB4EE',
+    fontWeight: '600',
   },
 });

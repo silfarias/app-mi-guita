@@ -55,3 +55,12 @@ export interface MovimientoSearchResponse {
 
 export type MovimientosPorInfoSearchResponse = SearchResponse<MovimientosPorInfoResponse>;
 export type MovimientosPorInfoSearchMetadata = SearchMetadata;
+
+export interface MovimientoFiltros {
+  infoInicialId?: number;
+  tipoMovimiento?: TipoMovimientoEnum;
+  categoriaId?: number;
+  medioPagoId?: number;
+  fechaDesde?: string; // formato YYYY-MM-DD
+  fechaHasta?: string; // formato YYYY-MM-DD
+}

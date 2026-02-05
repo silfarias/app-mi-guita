@@ -3,6 +3,7 @@ import { MovimientoModal } from '@/components/movimiento-modal';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
 import { useDeleteMovimiento, useMovimientosPorInfo } from '@/features/movimiento/hooks/movimiento.hook';
 import { TipoMovimientoEnum } from '@/features/movimiento/interfaces/movimiento.interface';
+import { useReporteMensual } from '@/features/reporte/hooks/reporte.hook';
 import { useAuthStore } from '@/store/auth.store';
 import { getCurrentMonth, getCurrentYear } from '@/utils/date';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -32,14 +33,16 @@ export default function HomeScreen() {
   const user = useAuthStore((state) => state.usuario?.persona?.nombre || '');
   const { logout, loading: logoutLoading } = useLogout();
   const { data: movimientosData, loading: movimientosLoading, error: movimientosError, fetchMovimientos } = useMovimientosPorInfo();
+  const { data: reporteData, loading: reporteLoading, error: reporteError, fetchReporteMensual } = useReporteMensual();
   const { deleteMovimiento, loading: deleting } = useDeleteMovimiento();
 
   const currentMonth = getCurrentMonth();
   const currentYear = getCurrentYear();
 
-  // Cargar movimientos al montar el componente
+  // Cargar datos al montar el componente
   useEffect(() => {
     fetchMovimientos();
+    fetchReporteMensual({ anio: currentYear, mes: currentMonth });
   }, []);
 
   const toggleMenu = () => {
@@ -75,25 +78,35 @@ export default function HomeScreen() {
     };
   });
 
-  // Obtener movimientos del mes actual
+  // Obtener movimientos del mes actual (últimos 5)
   const movimientosDelMes = movimientosData?.data?.[0]?.movimientos || [];
-  const infoInicial = movimientosData?.data?.[0]?.infoInicial;
+  const ultimosMovimientos = movimientosDelMes.slice(0, 5);
 
-  const formatCurrency = (amount: string) => {
+  const formatCurrency = (amount: number | string) => {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS',
       minimumFractionDigits: 2,
-    }).format(parseFloat(amount));
+    }).format(typeof amount === 'string' ? parseFloat(amount) : amount);
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const diaSemana = diasSemana[date.getDay()];
+    const dia = date.getDate();
+    const mes = meses[date.getMonth()];
+    return `${diaSemana} ${dia} ${mes}`;
   };
 
   const getMedioPagoIcon = (tipo: string) => {
     return tipo === 'BILLETERA_VIRTUAL' ? 'wallet' : 'bank';
+  };
+
+  const formatVariacion = (variacion: number) => {
+    const signo = variacion >= 0 ? '+' : '';
+    return `${signo}${variacion.toFixed(1)}%`;
   };
 
   const handleEditarMovimiento = (movimientoId: number) => {
@@ -122,6 +135,7 @@ export default function HomeScreen() {
         setIsConfirmacionModalVisible(false);
         setMovimientoSeleccionado(null);
         fetchMovimientos();
+        fetchReporteMensual({ anio: currentYear, mes: currentMonth });
       } catch (error) {
         // El error ya se maneja en el hook
       }
@@ -139,6 +153,13 @@ export default function HomeScreen() {
       return nuevo;
     });
   };
+
+  const handleRefresh = () => {
+    fetchMovimientos();
+    fetchReporteMensual({ anio: currentYear, mes: currentMonth });
+  };
+
+  const isLoading = movimientosLoading || reporteLoading;
 
   return (
     <View style={styles.container}>
@@ -167,29 +188,204 @@ export default function HomeScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         refreshControl={
-          <RefreshControl refreshing={movimientosLoading} onRefresh={fetchMovimientos} />
+          <RefreshControl refreshing={isLoading} onRefresh={handleRefresh} />
         }
       >
-        {/* Resumen del mes */}
-        {infoInicial && (
-          <Card style={styles.summaryCard}>
-            <Card.Content>
-              <View style={styles.summaryHeader}>
-                <MaterialCommunityIcons name="calendar-month" size={24} color="#6CB4EE" />
-                <Text variant="titleMedium" style={styles.summaryTitle}>
-                  Resumen del Mes
+        {/* Dashboard - Resumen Principal */}
+        {reporteData && (
+          <>
+            {/* Cards de Resumen */}
+            <View style={styles.resumenContainer}>
+              <Card style={[styles.resumenCard, styles.ingresosCard]}>
+                <Card.Content>
+                  <View style={styles.resumenCardHeader}>
+                    <MaterialCommunityIcons name="arrow-down-circle" size={24} color="#27AE60" />
+                    <Text variant="bodySmall" style={styles.resumenCardLabel}>
+                      Ingresos
+                    </Text>
+                  </View>
+                  <Text variant="headlineSmall" style={styles.resumenCardAmount}>
+                    {formatCurrency(reporteData.totalIngresos)}
+                  </Text>
+                </Card.Content>
+              </Card>
+
+              <Card style={[styles.resumenCard, styles.egresosCard]}>
+                <Card.Content>
+                  <View style={styles.resumenCardHeader}>
+                    <MaterialCommunityIcons name="arrow-up-circle" size={24} color="#E74C3C" />
+                    <Text variant="bodySmall" style={styles.resumenCardLabel}>
+                      Egresos
+                    </Text>
+                  </View>
+                  <Text variant="headlineSmall" style={styles.resumenCardAmount}>
+                    {formatCurrency(reporteData.totalEgresos)}
+                  </Text>
+                </Card.Content>
+              </Card>
+            </View>
+
+            {/* Balance Total */}
+            <Card style={styles.balanceCard}>
+              <Card.Content>
+                <View style={styles.balanceHeader}>
+                  <MaterialCommunityIcons name="wallet" size={28} color="#6CB4EE" />
+                  <Text variant="titleMedium" style={styles.balanceLabel}>
+                    Balance Total
+                  </Text>
+                </View>
+                <Text variant="headlineMedium" style={styles.balanceAmount}>
+                  {formatCurrency(reporteData.balanceTotal)}
                 </Text>
-              </View>
-              <View style={styles.summaryAmount}>
-                <Text variant="headlineMedium" style={styles.summaryAmountText}>
-                  {formatCurrency(infoInicial.montoTotal.toString())}
+                <Text variant="bodySmall" style={styles.balanceSubtext}>
+                  Balance del mes: {formatCurrency(reporteData.balance)}
                 </Text>
-              </View>
-              <Text variant="bodySmall" style={styles.summarySubtext}>
-                Total disponible
-              </Text>
-            </Card.Content>
-          </Card>
+              </Card.Content>
+            </Card>
+
+            {/* Comparación con Mes Anterior */}
+            {reporteData.comparacionMesAnterior && (
+              <Card style={styles.comparacionCard}>
+                <Card.Content>
+                  <View style={styles.comparacionHeader}>
+                    <MaterialCommunityIcons name="chart-line" size={24} color="#6CB4EE" />
+                    <Text variant="titleMedium" style={styles.comparacionTitle}>
+                      Comparación con mes anterior
+                    </Text>
+                  </View>
+                  <View style={styles.comparacionItems}>
+                    <View style={styles.comparacionItem}>
+                      <Text variant="bodySmall" style={styles.comparacionLabel}>
+                        Ingresos
+                      </Text>
+                      <Text
+                        variant="bodyMedium"
+                        style={[
+                          styles.comparacionValue,
+                          reporteData.comparacionMesAnterior.variacionIngresos >= 0
+                            ? styles.comparacionPositiva
+                            : styles.comparacionNegativa,
+                        ]}
+                      >
+                        {formatVariacion(reporteData.comparacionMesAnterior.variacionIngresos)}
+                      </Text>
+                    </View>
+                    <View style={styles.comparacionItem}>
+                      <Text variant="bodySmall" style={styles.comparacionLabel}>
+                        Egresos
+                      </Text>
+                      <Text
+                        variant="bodyMedium"
+                        style={[
+                          styles.comparacionValue,
+                          reporteData.comparacionMesAnterior.variacionEgresos >= 0
+                            ? styles.comparacionPositiva
+                            : styles.comparacionNegativa,
+                        ]}
+                      >
+                        {formatVariacion(reporteData.comparacionMesAnterior.variacionEgresos)}
+                      </Text>
+                    </View>
+                    <View style={styles.comparacionItem}>
+                      <Text variant="bodySmall" style={styles.comparacionLabel}>
+                        Balance
+                      </Text>
+                      <Text
+                        variant="bodyMedium"
+                        style={[
+                          styles.comparacionValue,
+                          reporteData.comparacionMesAnterior.variacionBalance >= 0
+                            ? styles.comparacionPositiva
+                            : styles.comparacionNegativa,
+                        ]}
+                      >
+                        {formatVariacion(reporteData.comparacionMesAnterior.variacionBalance)}
+                      </Text>
+                    </View>
+                  </View>
+                </Card.Content>
+              </Card>
+            )}
+
+            {/* Top 5 Categorías */}
+            {reporteData.top5Categorias && reporteData.top5Categorias.length > 0 && (
+              <Card style={styles.categoriasCard}>
+                <Card.Content>
+                  <View style={styles.sectionHeader}>
+                    <MaterialCommunityIcons name="tag-multiple" size={24} color="#6CB4EE" />
+                    <Text variant="titleMedium" style={styles.sectionTitle}>
+                      Top 5 Categorías
+                    </Text>
+                  </View>
+                  {reporteData.top5Categorias.map((item, index) => (
+                    <View key={item.categoria.id} style={styles.categoriaItem}>
+                      <View style={styles.categoriaLeft}>
+                        <View
+                          style={[
+                            styles.categoriaIconContainer,
+                            { backgroundColor: `${item.categoria.color}20` },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            name={item.categoria.icono as any}
+                            size={20}
+                            color={item.categoria.color}
+                          />
+                        </View>
+                        <View style={styles.categoriaInfo}>
+                          <Text variant="bodyMedium" style={styles.categoriaNombre}>
+                            {item.categoria.nombre}
+                          </Text>
+                          <Text variant="bodySmall" style={styles.categoriaMeta}>
+                            {item.cantidadMovimientos} movimientos • {item.porcentaje.toFixed(1)}%
+                          </Text>
+                        </View>
+                      </View>
+                      <Text variant="bodyLarge" style={styles.categoriaMonto}>
+                        {formatCurrency(item.total)}
+                      </Text>
+                    </View>
+                  ))}
+                </Card.Content>
+              </Card>
+            )}
+
+            {/* Saldos por Medio de Pago */}
+            {reporteData.saldosPorMedioPago && reporteData.saldosPorMedioPago.length > 0 && (
+              <Card style={styles.mediosPagoCard}>
+                <Card.Content>
+                  <View style={styles.sectionHeader}>
+                    <MaterialCommunityIcons name="credit-card-multiple" size={24} color="#6CB4EE" />
+                    <Text variant="titleMedium" style={styles.sectionTitle}>
+                      Saldos por Medio de Pago
+                    </Text>
+                  </View>
+                  {reporteData.saldosPorMedioPago.map((saldo) => (
+                    <View key={saldo.medioPago.id} style={styles.medioPagoItem}>
+                      <View style={styles.medioPagoLeft}>
+                        <MaterialCommunityIcons
+                          name={getMedioPagoIcon(saldo.medioPago.tipo) as any}
+                          size={24}
+                          color="#6CB4EE"
+                        />
+                        <View style={styles.medioPagoInfo}>
+                          <Text variant="bodyMedium" style={styles.medioPagoNombre}>
+                            {saldo.medioPago.nombre}
+                          </Text>
+                          <Text variant="bodySmall" style={styles.medioPagoMeta}>
+                            Inicial: {formatCurrency(saldo.saldoInicial)} • Ingresos: {formatCurrency(saldo.totalIngresos)} • Egresos: {formatCurrency(saldo.totalEgresos)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text variant="bodyLarge" style={styles.medioPagoSaldo}>
+                        {formatCurrency(saldo.saldoActual)}
+                      </Text>
+                    </View>
+                  ))}
+                </Card.Content>
+              </Card>
+            )}
+          </>
         )}
 
         {/* Botón crear movimiento */}
@@ -204,25 +400,25 @@ export default function HomeScreen() {
           Crear Movimiento
         </Button>
 
-        {/* Lista de movimientos */}
-        {movimientosLoading ? (
+        {/* Últimos Movimientos (máximo 5) */}
+        {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#6CB4EE" />
             <Text variant="bodyMedium" style={styles.loadingText}>
-              Cargando movimientos...
+              Cargando información...
             </Text>
           </View>
-        ) : movimientosError ? (
+        ) : movimientosError || reporteError ? (
           <Card style={styles.errorCard}>
             <Card.Content>
               <View style={styles.errorContent}>
                 <MaterialCommunityIcons name="alert-circle" size={48} color="#D32F2F" />
                 <Text variant="bodyLarge" style={styles.errorText}>
-                  {movimientosError}
+                  {movimientosError || reporteError}
                 </Text>
                 <Button
                   mode="outlined"
-                  onPress={fetchMovimientos}
+                  onPress={handleRefresh}
                   style={styles.retryButton}
                 >
                   Reintentar
@@ -230,7 +426,7 @@ export default function HomeScreen() {
               </View>
             </Card.Content>
           </Card>
-        ) : movimientosDelMes.length === 0 ? (
+        ) : ultimosMovimientos.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Card.Content>
               <View style={styles.emptyContent}>
@@ -246,10 +442,23 @@ export default function HomeScreen() {
           </Card>
         ) : (
           <View style={styles.movimientosContainer}>
-            <Text variant="titleMedium" style={styles.sectionTitle}>
-              Movimientos ({movimientosDelMes.length})
-            </Text>
-            {movimientosDelMes.map((movimiento) => {
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="clock-outline" size={24} color="#6CB4EE" />
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                Últimos Movimientos
+              </Text>
+              {movimientosDelMes.length > 5 && (
+                <TouchableOpacity
+                  onPress={() => router.push('/(tabs)/explore' as any)}
+                  style={styles.verTodosButton}
+                >
+                  <Text variant="bodySmall" style={styles.verTodosText}>
+                    Ver todos ({movimientosDelMes.length})
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {ultimosMovimientos.map((movimiento) => {
               const isExpanded = movimientosExpandidos.has(movimiento.id);
               return (
                 <TouchableOpacity
@@ -263,7 +472,7 @@ export default function HomeScreen() {
                         <View style={styles.movimientoLeft}>
                           <View
                             style={[
-                              styles.categoriaIconContainer,
+                              styles.movimientoIconContainer,
                               { backgroundColor: `${movimiento.categoria.color}20` },
                             ]}
                           >
@@ -277,7 +486,7 @@ export default function HomeScreen() {
                             <Text
                               variant="bodyLarge"
                               style={styles.movimientoDescripcion}
-                              numberOfLines={isExpanded ? undefined : 2}
+                              numberOfLines={isExpanded ? undefined : 1}
                               ellipsizeMode="tail"
                             >
                               {movimiento.descripcion}
@@ -293,64 +502,52 @@ export default function HomeScreen() {
                           </View>
                         </View>
                         <View style={styles.movimientoRight}>
-                          <View style={styles.movimientoRightTop}>
-                            <Text
-                              variant="titleMedium"
-                              style={[
-                                styles.movimientoMonto,
-                                movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO
-                                  ? styles.movimientoMontoEgreso
-                                  : styles.movimientoMontoIngreso,
-                              ]}
-                            >
-                              {movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO ? '-' : '+'}
-                              {formatCurrency(movimiento.monto)}
-                            </Text>
-                            <Menu
-                              visible={menuVisible === movimiento.id}
-                              onDismiss={() => setMenuVisible(null)}
-                              anchor={
-                                <TouchableOpacity
-                                  onPress={(e) => {
-                                    e.stopPropagation();
-                                    setMenuVisible(movimiento.id);
-                                  }}
-                                  style={styles.menuButton}
-                                >
-                                  <MaterialCommunityIcons name="dots-vertical" size={24} color="#666666" />
-                                </TouchableOpacity>
-                              }
-                              contentStyle={styles.menuDropdownContent}
-                            >
-                              <Menu.Item
-                                onPress={() => {
-                                  setMenuVisible(null);
-                                  handleEditarMovimiento(movimiento.id);
+                          <Text
+                            variant="titleMedium"
+                            style={[
+                              styles.movimientoMonto,
+                              movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO
+                                ? styles.movimientoMontoEgreso
+                                : styles.movimientoMontoIngreso,
+                            ]}
+                          >
+                            {movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO ? '-' : '+'}
+                            {formatCurrency(movimiento.monto)}
+                          </Text>
+                          <Menu
+                            visible={menuVisible === movimiento.id}
+                            onDismiss={() => setMenuVisible(null)}
+                            anchor={
+                              <TouchableOpacity
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  setMenuVisible(movimiento.id);
                                 }}
-                                title="Editar"
-                                leadingIcon="pencil"
-                              />
-                              <Menu.Item
-                                onPress={() => {
-                                  setMenuVisible(null);
-                                  handleEliminarMovimiento(movimiento.id);
-                                }}
-                                title="Eliminar"
-                                leadingIcon="delete"
-                                titleStyle={styles.deleteMenuItem}
-                              />
-                            </Menu>
-                          </View>
-                          <View style={styles.movimientoMedioPago}>
-                            <MaterialCommunityIcons
-                              name={getMedioPagoIcon(movimiento.medioPago.tipo) as any}
-                              size={16}
-                              color="#666666"
+                                style={styles.menuButton}
+                              >
+                                <MaterialCommunityIcons name="dots-vertical" size={20} color="#666666" />
+                              </TouchableOpacity>
+                            }
+                            contentStyle={styles.menuDropdownContent}
+                          >
+                            <Menu.Item
+                              onPress={() => {
+                                setMenuVisible(null);
+                                handleEditarMovimiento(movimiento.id);
+                              }}
+                              title="Editar"
+                              leadingIcon="pencil"
                             />
-                            <Text variant="bodySmall" style={styles.movimientoMedioPagoText}>
-                              {movimiento.medioPago.nombre}
-                            </Text>
-                          </View>
+                            <Menu.Item
+                              onPress={() => {
+                                setMenuVisible(null);
+                                handleEliminarMovimiento(movimiento.id);
+                              }}
+                              title="Eliminar"
+                              leadingIcon="delete"
+                              titleStyle={styles.deleteMenuItem}
+                            />
+                          </Menu>
                         </View>
                       </View>
                     </Card.Content>
@@ -423,6 +620,7 @@ export default function HomeScreen() {
         movimientoId={movimientoSeleccionado}
         onSuccess={() => {
           fetchMovimientos();
+          fetchReporteMensual({ anio: currentYear, mes: currentMonth });
           setMovimientoSeleccionado(null);
         }}
       />
@@ -480,32 +678,190 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
-  summaryCard: {
+  resumenContainer: {
+    flexDirection: 'row',
+    gap: 12,
     marginBottom: 16,
+  },
+  resumenCard: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 12,
     elevation: 2,
   },
-  summaryHeader: {
+  ingresosCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#27AE60',
+  },
+  egresosCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#E74C3C',
+  },
+  resumenCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
+    gap: 6,
   },
-  summaryTitle: {
-    marginLeft: 8,
+  resumenCardLabel: {
+    color: '#666666',
+    fontWeight: '500',
+  },
+  resumenCardAmount: {
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  balanceCard: {
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: '#6CB4EE',
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  balanceLabel: {
     fontWeight: '600',
     color: '#333333',
   },
-  summaryAmount: {
-    marginTop: 8,
-  },
-  summaryAmountText: {
+  balanceAmount: {
     fontWeight: 'bold',
     color: '#6CB4EE',
+    marginBottom: 4,
   },
-  summarySubtext: {
+  balanceSubtext: {
     color: '#666666',
-    marginTop: 4,
+  },
+  comparacionCard: {
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    elevation: 2,
+  },
+  comparacionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  comparacionTitle: {
+    fontWeight: '600',
+    color: '#333333',
+  },
+  comparacionItems: {
+    gap: 12,
+  },
+  comparacionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  comparacionLabel: {
+    color: '#666666',
+  },
+  comparacionValue: {
+    fontWeight: '600',
+  },
+  comparacionPositiva: {
+    color: '#27AE60',
+  },
+  comparacionNegativa: {
+    color: '#E74C3C',
+  },
+  categoriasCard: {
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    elevation: 2,
+  },
+  mediosPagoCard: {
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  sectionTitle: {
+    fontWeight: '600',
+    color: '#333333',
+    flex: 1,
+  },
+  categoriaItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  categoriaLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  categoriaIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoriaInfo: {
+    flex: 1,
+  },
+  categoriaNombre: {
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 2,
+  },
+  categoriaMeta: {
+    color: '#666666',
+  },
+  categoriaMonto: {
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  medioPagoItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  medioPagoLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  medioPagoInfo: {
+    flex: 1,
+  },
+  medioPagoNombre: {
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 2,
+  },
+  medioPagoMeta: {
+    color: '#666666',
+    fontSize: 11,
+  },
+  medioPagoSaldo: {
+    fontWeight: 'bold',
+    color: '#6CB4EE',
   },
   createButton: {
     marginBottom: 24,
@@ -574,10 +930,13 @@ const styles = StyleSheet.create({
   movimientosContainer: {
     marginTop: 8,
   },
-  sectionTitle: {
-    marginBottom: 12,
+  verTodosButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  verTodosText: {
+    color: '#6CB4EE',
     fontWeight: '600',
-    color: '#333333',
   },
   movimientoCard: {
     marginBottom: 12,
@@ -595,7 +954,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  categoriaIconContainer: {
+  movimientoIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -615,6 +974,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginTop: 4,
   },
   movimientoCategoria: {
     color: '#666666',
@@ -624,12 +984,7 @@ const styles = StyleSheet.create({
   },
   movimientoRight: {
     alignItems: 'flex-end',
-  },
-  movimientoRightTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: 4,
   },
   menuButton: {
     padding: 2,
@@ -642,22 +997,12 @@ const styles = StyleSheet.create({
   },
   movimientoMonto: {
     fontWeight: 'bold',
-    marginBottom: 4,
   },
   movimientoMontoEgreso: {
     color: '#E74C3C',
   },
   movimientoMontoIngreso: {
     color: '#27AE60',
-  },
-  movimientoMedioPago: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  movimientoMedioPagoText: {
-    color: '#666666',
-    fontSize: 12,
   },
   backdrop: {
     position: 'absolute',

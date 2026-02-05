@@ -66,3 +66,72 @@ export function useInfoInicialPorUsuario() {
     refetch: fetch,
   };
 }
+
+/**
+ * Hook para actualizar una información inicial existente.
+ */
+export function useUpdateInfoInicial() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { loading, error, setError, run } = useAsyncRun();
+  const [data, setData] = useState<InfoInicialResponse | null>(null);
+
+  const update = async (id: string | number, request: InfoInicialRequest) => {
+    if (!accessToken) {
+      setError('No hay sesión activa');
+      return;
+    }
+    await run(
+      async () => {
+        const response = await infoInicialService.update(accessToken, String(id), request);
+        setData(response);
+        return response;
+      },
+      { errorFallback: 'Error al actualizar la información inicial', logLabel: 'infoInicial.update' }
+    );
+  };
+
+  const reset = () => {
+    setData(null);
+    setError(null);
+  };
+
+  return {
+    data,
+    loading,
+    error,
+    update,
+    reset,
+  };
+}
+
+/**
+ * Hook para obtener una información inicial por su ID.
+ */
+export function useInfoInicialById(id: string | number | null | undefined) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { loading, error, setError, run } = useAsyncRun();
+  const [data, setData] = useState<InfoInicialResponse | null>(null);
+
+  const fetchById = async () => {
+    if (id == null || !accessToken) {
+      if (!accessToken) setError('No hay sesión activa');
+      return;
+    }
+    await run(
+      async () => {
+        const response = await infoInicialService.getById(accessToken, String(id));
+        setData(response);
+        return response;
+      },
+      { errorFallback: 'Error al obtener la información inicial', logLabel: 'infoInicial.getById' }
+    );
+  };
+
+  return {
+    data,
+    loading,
+    error,
+    fetchById,
+    refetch: fetchById,
+  };
+}

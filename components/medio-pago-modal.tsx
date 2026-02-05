@@ -1,7 +1,8 @@
+import { ItemMenuMedioPago } from '@/components/item-menu-medio-pago';
 import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
-import { MedioPago } from '@/features/medio-pago/interfaces/medio-pago.interface';
+import { MedioPago, TipoMedioPago } from '@/features/medio-pago/interfaces/medio-pago.interface';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -11,6 +12,8 @@ import {
   View,
 } from 'react-native';
 import { Text } from 'react-native-paper';
+
+
 
 interface MedioPagoModalProps {
   visible: boolean;
@@ -27,12 +30,24 @@ export function MedioPagoModal({
   selectedValue,
   disabled = false,
 }: MedioPagoModalProps) {
+  const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoMedioPago | 'TODOS'>('TODOS');
   const { data: mediosPago, loading: mediosPagoLoading, fetchMediosPago } = useMediosPago();
 
-  // Cargar medios de pago cuando se abre el modal
+  // Cargar medios de pago cuando se abre el modal o cambia el tipo seleccionado
   useEffect(() => {
     if (visible) {
-      fetchMediosPago();
+      if (tipoSeleccionado === 'TODOS') {
+        fetchMediosPago();
+      } else {
+        fetchMediosPago({ tipo: tipoSeleccionado });
+      }
+    }
+  }, [visible, tipoSeleccionado]);
+
+  // Resetear el tipo cuando se cierra el modal
+  useEffect(() => {
+    if (!visible) {
+      setTipoSeleccionado('TODOS');
     }
   }, [visible]);
 
@@ -63,12 +78,36 @@ export function MedioPagoModal({
         <View style={styles.container}>
           <View style={styles.content}>
             <View style={styles.header}>
-              <Text variant="titleLarge" style={styles.title}>
+              <Text variant="titleMedium" style={styles.title}>
                 Seleccionar Medio de Pago
               </Text>
               <TouchableOpacity onPress={onDismiss} style={styles.closeButton}>
                 <MaterialCommunityIcons name="close" size={24} color="#333333" />
               </TouchableOpacity>
+            </View>
+
+            {/* Barra de menú para filtrar por tipo */}
+            <View style={styles.menuContainer}>
+              <ItemMenuMedioPago
+                tipo="TODOS"
+                label="Todos"
+                isActive={tipoSeleccionado === 'TODOS'}
+                onPress={() => setTipoSeleccionado('TODOS')}
+              />
+              <ItemMenuMedioPago
+                tipo={TipoMedioPago.BILLETERA_VIRTUAL}
+                label="Billeteras"
+                icon="wallet"
+                isActive={tipoSeleccionado === TipoMedioPago.BILLETERA_VIRTUAL}
+                onPress={() => setTipoSeleccionado(TipoMedioPago.BILLETERA_VIRTUAL)}
+              />
+              <ItemMenuMedioPago
+                tipo={TipoMedioPago.BANCO}
+                label="Bancos"
+                icon="bank"
+                isActive={tipoSeleccionado === TipoMedioPago.BANCO}
+                onPress={() => setTipoSeleccionado(TipoMedioPago.BANCO)}
+              />
             </View>
 
             {mediosPagoLoading ? (
@@ -164,6 +203,12 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 4,
+  },
+  menuContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    backgroundColor: '#F8F8F8',
   },
   loadingContainer: {
     padding: 40,

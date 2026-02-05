@@ -4,11 +4,12 @@ import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
 import { TipoMovimientoEnum } from '@/features/movimiento/interfaces/movimiento.interface';
-import { useMovimientoForm } from '@/features/movimiento/hooks/movimiento.hook';
+import { useMovimientoForm, useMovimientoById, useUpdateMovimiento } from '@/features/movimiento/hooks/movimiento.hook';
 import { getCurrentMonth, getCurrentYear } from '@/utils/date';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useEffect, useState } from 'react';
-import { Controller } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
+import Toast from 'react-native-toast-message';
 import {
   ActivityIndicator,
   Modal,
@@ -23,20 +24,28 @@ interface MovimientoModalProps {
   visible: boolean;
   onDismiss: () => void;
   onSuccess?: () => void;
+  movimientoId?: number | null;
 }
 
-export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoModalProps) {
+export function MovimientoModal({ visible, onDismiss, onSuccess, movimientoId }: MovimientoModalProps) {
+  const isEditMode = movimientoId != null;
+  const { data: movimientoData, loading: loadingMovimiento, fetchMovimientoById } = useMovimientoById(movimientoId);
+  const { update, loading: updating, error: updateError, data: updateData, reset: resetUpdate } = useUpdateMovimiento();
   const {
     control,
     handleSubmit,
     errors,
     onSubmit,
-    loading,
-    error,
+    loading: creating,
+    error: createError,
     data,
     reset,
     watch,
+    setValue,
   } = useMovimientoForm();
+  
+  const loading = creating || updating || loadingMovimiento;
+  const error = createError || updateError;
   
   // Observar cambios en los valores del formulario para forzar re-render
   const categoriaId = watch('categoriaId');
@@ -51,24 +60,56 @@ export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoMod
   const [medioPagoMenuVisible, setMedioPagoMenuVisible] = useState(false);
   const [movimientoCreado, setMovimientoCreado] = useState(false);
 
+  // Cargar datos del movimiento si está en modo edición
+  useEffect(() => {
+    if (visible && isEditMode && movimientoId) {
+      fetchMovimientoById();
+    }
+  }, [visible, isEditMode, movimientoId]);
+
+  // Cargar datos en el formulario cuando se obtiene el movimiento
+  useEffect(() => {
+    if (movimientoData && isEditMode && visible) {
+      setValue('infoInicialId', movimientoData.infoInicial.id);
+      setValue('fecha', movimientoData.fecha);
+      setValue('tipoMovimiento', movimientoData.tipoMovimiento);
+      setValue('descripcion', movimientoData.descripcion);
+      setValue('categoriaId', movimientoData.categoria.id);
+      setValue('monto', parseFloat(movimientoData.monto.toString()));
+      setValue('medioPagoId', movimientoData.medioPago.id);
+      setTipoMovimiento(movimientoData.tipoMovimiento);
+    }
+  }, [movimientoData, isEditMode, visible, setValue]);
+
   useEffect(() => {
     if (visible) {
       fetchInfoInicial();
       fetchCategorias({ activo: true });
       fetchMediosPago();
-      reset();
-      setTipoMovimiento(TipoMovimientoEnum.EGRESO);
+      if (!isEditMode) {
+        reset();
+        setTipoMovimiento(TipoMovimientoEnum.EGRESO);
+      }
       setCategoriaMenuVisible(false);
       setMedioPagoMenuVisible(false);
       setMovimientoCreado(false);
+    } else {
+      resetUpdate();
     }
-  }, [visible]);
+  }, [visible, isEditMode]);
 
-  // Cerrar modal cuando se crea exitosamente el movimiento
+  // Cerrar modal cuando se crea o actualiza exitosamente el movimiento
   useEffect(() => {
-    // Solo cerrar si el modal está visible, hay data, no está cargando, no hay error
-    // Y si acabamos de crear un movimiento (movimientoCreado es true)
-    if (visible && movimientoCreado && data && !loading && !error) {
+    // Para creación
+    if (visible && !isEditMode && movimientoCreado && data && !loading && !error) {
+      Toast.show({
+        type: 'success',
+        text1: '¡Movimiento creado!',
+        text2: 'El movimiento se ha registrado exitosamente',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+
       const timer = setTimeout(() => {
         onDismiss();
         if (onSuccess) {
@@ -79,7 +120,28 @@ export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoMod
       
       return () => clearTimeout(timer);
     }
-  }, [visible, movimientoCreado, data, loading, error]);
+    
+    // Para actualización
+    if (visible && isEditMode && movimientoCreado && updateData && !updating && !loading && !updateError) {
+      Toast.show({
+        type: 'success',
+        text1: '¡Movimiento actualizado!',
+        text2: 'El movimiento se ha actualizado exitosamente',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+
+      const timer = setTimeout(() => {
+        onDismiss();
+        if (onSuccess) {
+          onSuccess();
+        }
+        setMovimientoCreado(false);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [visible, isEditMode, movimientoCreado, data, updateData, loading, error, updateError, updating]);
 
   const handleFormSubmit = async (formData: any) => {
     // Usar la info inicial del mes actual
@@ -95,8 +157,12 @@ export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoMod
     };
 
     setMovimientoCreado(true);
-    await onSubmit(movimientoData);
-    // El cierre del modal se maneja en el useEffect cuando movimientoCreado es true
+    
+    if (isEditMode && movimientoId) {
+      await update(movimientoId, movimientoData);
+    } else {
+      await onSubmit(movimientoData);
+    }
   };
 
   // Obtener la info inicial del mes actual
@@ -146,7 +212,7 @@ export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoMod
             {/* Header */}
             <View style={styles.header}>
               <Text variant="headlineSmall" style={styles.title}>
-                Crear Movimiento
+                {isEditMode ? 'Editar Movimiento' : 'Crear Movimiento'}
               </Text>
               <TouchableOpacity
                 onPress={handleClose}
@@ -520,7 +586,7 @@ export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoMod
                     contentStyle={styles.buttonContent}
                     labelStyle={styles.buttonLabel}
                   >
-                    {loading ? 'Creando...' : 'Crear Movimiento'}
+                    {loading ? (isEditMode ? 'Actualizando...' : 'Creando...') : (isEditMode ? 'Actualizar Movimiento' : 'Crear Movimiento')}
                   </Button>
                 </View>
               </ScrollView>

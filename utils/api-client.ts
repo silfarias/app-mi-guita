@@ -77,3 +77,77 @@ export async function fetchAuthPost<T, B = unknown>(
 
   return response.json();
 }
+
+export async function fetchAuthPatch<T, B = unknown>(
+  token: string,
+  path: string,
+  body: B,
+  options: { defaultError: string }
+): Promise<T> {
+  const url = path.startsWith("http") ? path : `${API_URL}${path}`;
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) throw new Error(UNAUTHORIZED_MESSAGE);
+    let message = options.defaultError;
+    try {
+      const data = await response.json();
+      message = data?.errorDetails?.message ?? message;
+    } catch {
+      message = `Error ${response.status}: ${response.statusText}`;
+    }
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+export async function fetchAuthDelete<T>(
+  token: string,
+  path: string,
+  options: { defaultError: string }
+): Promise<T> {
+  const url = path.startsWith("http") ? path : `${API_URL}${path}`;
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) throw new Error(UNAUTHORIZED_MESSAGE);
+    let message = options.defaultError;
+    try {
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await response.json();
+        message = data?.errorDetails?.message ?? message;
+      } else {
+        const text = await response.text();
+        message = text || message;
+      }
+    } catch {
+      message = `Error ${response.status}: ${response.statusText}`;
+    }
+    throw new Error(message);
+  }
+
+  // Manejar respuesta de texto plano (string) o JSON
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    return response.json();
+  } else {
+    const text = await response.text();
+    return text as T;
+  }
+}

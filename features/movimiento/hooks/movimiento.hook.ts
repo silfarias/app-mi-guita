@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { useAuthStore } from '../../../store/auth.store';
-import { MovimientoRequest, MovimientoResponse, TipoMovimientoEnum } from '../interfaces/movimiento.interface';
+import { MovimientoRequest, MovimientoResponse, MovimientoSearchResponse, MovimientosPorInfoSearchResponse, TipoMovimientoEnum } from '../interfaces/movimiento.interface';
 import { MovimientoService } from '../services/movimiento.service';
 import { useAsyncRun } from '../../../hooks/use-async-run';
 
@@ -17,7 +17,7 @@ export function useMovimientoForm() {
   const { loading, error, setError, run } = useAsyncRun();
   const [data, setData] = useState<MovimientoResponse | null>(null);
 
-  const { control, handleSubmit, formState: { errors }, reset: resetForm, watch } = useForm<MovimientoRequest>({
+  const { control, handleSubmit, formState: { errors }, reset: resetForm, watch, setValue } = useForm<MovimientoRequest>({
     defaultValues: {
       infoInicialId: 0,
       fecha: new Date().toISOString().split('T')[0],
@@ -65,5 +65,136 @@ export function useMovimientoForm() {
     onSubmit,
     reset,
     watch,
+    setValue,
+  };
+}
+
+/**
+ * Hook para obtener movimientos por info inicial (mes actual).
+ * Retorna los movimientos agrupados por info inicial.
+ */
+export function useMovimientosPorInfo() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { loading, error, setError, run } = useAsyncRun();
+  const [data, setData] = useState<MovimientosPorInfoSearchResponse | null>(null);
+
+  const fetchMovimientos = async () => {
+    if (!accessToken) {
+      setError('No hay sesión activa');
+      return;
+    }
+    await run(
+      async () => {
+        const response = await movimientoService.getByInfoInicial(accessToken);
+        setData(response);
+        return response;
+      },
+      { errorFallback: 'Error al obtener los movimientos', logLabel: 'fetchMovimientosPorInfo' }
+    );
+  };
+
+  return {
+    data,
+    loading,
+    error,
+    fetchMovimientos,
+    refetch: fetchMovimientos,
+  };
+}
+
+/**
+ * Hook para obtener un movimiento por su ID.
+ * Retorna el movimiento específico solicitado.
+ */
+export function useMovimientoById(id: string | number | null | undefined) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { loading, error, setError, run } = useAsyncRun();
+  const [data, setData] = useState<MovimientoSearchResponse | null>(null);
+
+  const fetchMovimientoById = async () => {
+    if (id == null || !accessToken) {
+      if (!accessToken) setError('No hay sesión activa');
+      return;
+    }
+    await run(
+      async () => {
+        const response = await movimientoService.getById(accessToken, String(id));
+        setData(response);
+        return response;
+      },
+      { errorFallback: 'Error al obtener el movimiento', logLabel: 'fetchMovimientoById' }
+    );
+  };
+
+  return {
+    data,
+    loading,
+    error,
+    fetchMovimientoById,
+    refetch: fetchMovimientoById,
+  };
+}
+
+/**
+ * Hook para actualizar un movimiento existente.
+ */
+export function useUpdateMovimiento() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { loading, error, setError, run } = useAsyncRun();
+  const [data, setData] = useState<MovimientoResponse | null>(null);
+
+  const update = async (id: string | number, request: Partial<MovimientoRequest>) => {
+    if (!accessToken) {
+      setError('No hay sesión activa');
+      return;
+    }
+    await run(
+      async () => {
+        const response = await movimientoService.update(accessToken, String(id), request);
+        setData(response);
+        return response;
+      },
+      { errorFallback: 'Error al actualizar el movimiento', logLabel: 'updateMovimiento' }
+    );
+  };
+
+  const reset = () => {
+    setData(null);
+    setError(null);
+  };
+
+  return {
+    data,
+    loading,
+    error,
+    update,
+    reset,
+  };
+}
+
+/**
+ * Hook para eliminar un movimiento.
+ */
+export function useDeleteMovimiento() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { loading, error, setError, run } = useAsyncRun();
+
+  const deleteMovimiento = async (id: string | number) => {
+    if (!accessToken) {
+      setError('No hay sesión activa');
+      return;
+    }
+    await run(
+      async () => {
+        await movimientoService.delete(accessToken, String(id));
+      },
+      { errorFallback: 'Error al eliminar el movimiento', logLabel: 'deleteMovimiento' }
+    );
+  };
+
+  return {
+    loading,
+    error,
+    deleteMovimiento,
   };
 }

@@ -81,7 +81,7 @@ export function CategoriaModal({
         <View style={styles.container}>
           <View style={styles.content}>
             <View style={styles.header}>
-              <Text variant="titleLarge" style={styles.title}>
+              <Text variant="titleMedium" style={styles.title}>
                 Seleccionar Categoría
               </Text>
               <TouchableOpacity onPress={onDismiss} style={styles.closeButton}>
@@ -220,18 +220,20 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
   searchInput: {
     backgroundColor: '#FFFFFF',
+    height: 50,
   },
   searchInputContent: {
-    fontSize: 16,
+    fontSize: 14,
+    paddingVertical: 0,
   },
   searchInputOutline: {
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1.5,
   },
   loadingContainer: {

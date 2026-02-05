@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 import { paperTheme } from '@/constants/paper-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PaperProvider } from 'react-native-paper';
+import Toast from 'react-native-toast-message';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -26,7 +27,7 @@ export default function RootLayout() {
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>
-
+      <Toast />
     </PaperProvider>
   );
 }

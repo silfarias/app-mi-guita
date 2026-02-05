@@ -1,6 +1,7 @@
 import { Categoria } from "@/features/categoria/interfaces/categoria.interface";
 import { InfoInicialResponse } from "@/features/info-inicial/interfaces/info-inicial.interface";
 import { MedioPago } from "@/features/medio-pago/interfaces/medio-pago.interface";
+import { SearchMetadata, SearchResponse } from "@/types/api.types";
 
 export enum TipoMovimientoEnum {
     INGRESO = 'INGRESO',
@@ -26,3 +27,31 @@ export interface MovimientoResponse {
     monto: number;
     medioPago: MedioPago;
 }
+
+export interface MovimientoListItem {
+    id: number;
+    fecha: string;
+    tipoMovimiento: TipoMovimientoEnum;
+    categoria: Categoria;
+    descripcion: string;
+    monto: string;
+    medioPago: MedioPago;
+}
+
+export interface MovimientosPorInfoResponse {
+    infoInicial: InfoInicialResponse;
+    movimientos: MovimientoListItem[];
+}
+
+export interface MovimientoSearchResponse {
+    infoInicial: InfoInicialResponse;
+    fecha: string;
+    tipoMovimiento: TipoMovimientoEnum;
+    categoria: Categoria;
+    descripcion: string;
+    monto: number;
+    medioPago: MedioPago;
+}
+
+export type MovimientosPorInfoSearchResponse = SearchResponse<MovimientosPorInfoResponse>;
+export type MovimientosPorInfoSearchMetadata = SearchMetadata;

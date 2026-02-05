@@ -10,7 +10,7 @@ import { MovimientoFiltros, TipoMovimientoEnum } from '@/features/movimiento/int
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { Button, Card, Menu, Text } from 'react-native-paper';
+import { Button, Card, FAB, Menu, Text } from 'react-native-paper';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -514,6 +514,14 @@ export default function ExploreScreen() {
         selectedValue={filtrosTemporales.medioPagoId}
       />
 
+      {/* Botón FAB para crear movimiento */}
+      <FAB
+        icon="plus"
+        style={[styles.fab, { bottom: insets.bottom + 16 }]}
+        onPress={() => setIsMovimientoModalVisible(true)}
+        color="#FFFFFF"
+      />
+
       {/* Modal de Crear/Editar Movimiento */}
       <MovimientoModal
         visible={isMovimientoModalVisible}
@@ -790,5 +798,10 @@ const styles = StyleSheet.create({
   movimientoMedioPagoText: {
     color: '#666666',
     fontSize: 12,
+  },
+  fab: {
+    position: 'absolute',
+    right: 16,
+    backgroundColor: '#6CB4EE',
   },
 });

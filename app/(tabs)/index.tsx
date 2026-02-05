@@ -1,10 +1,11 @@
+import { MovimientoModal } from '@/components/movimiento-modal';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
 import { useAuthStore } from '@/store/auth.store';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
-import { IconButton, Text } from 'react-native-paper';
+import { Button, IconButton, Text } from 'react-native-paper';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -14,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMovimientoModalVisible, setIsMovimientoModalVisible] = useState(false);
   const translateX = useSharedValue(300); // Ancho del menú (inicialmente fuera de la pantalla)
   const opacity = useSharedValue(0);
   const insets = useSafeAreaInsets();
@@ -58,27 +60,33 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header con botón hamburguesa */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <View style={styles.headerContent}>
-          <Text variant="headlineSmall" style={styles.title}>
-            Hola, {user}
-          </Text>
-          <IconButton
-            icon="menu"
-            size={28}
-            onPress={toggleMenu}
-            style={styles.menuButton}
-          />
+        {/* Header con botón hamburguesa */}
+        <View style={[styles.header, { paddingTop: insets.top }]}>
+          <View style={styles.headerContent}>
+            <Text variant="headlineSmall" style={styles.title}>
+              Hola, {user}
+            </Text>
+            <IconButton
+              icon="menu"
+              size={28}
+              onPress={toggleMenu}
+              style={styles.menuButton}
+            />
+          </View>
         </View>
-      </View>
 
-      {/* Contenido principal */}
-      <View style={styles.content}>
-        <Text variant="bodyLarge" style={styles.text}>
-          Contenido principal
-        </Text>
-      </View>
+        {/* Contenido principal */}
+        <View style={styles.content}>
+          <Button
+            mode="contained"
+            onPress={() => setIsMovimientoModalVisible(true)}
+            style={styles.createButton}
+            contentStyle={styles.createButtonContent}
+            labelStyle={styles.createButtonLabel}
+          >
+            Crear Movimiento
+          </Button>
+        </View>
 
       {/* Backdrop oscuro */}
       {isMenuOpen && (
@@ -130,6 +138,16 @@ export default function HomeScreen() {
         </View>
       </Animated.View>
       )}
+
+      {/* Modal de Crear Movimiento */}
+      <MovimientoModal
+        visible={isMovimientoModalVisible}
+        onDismiss={() => setIsMovimientoModalVisible(false)}
+        onSuccess={() => {
+          // Aquí puedes agregar lógica adicional después de crear el movimiento
+          // Por ejemplo, refrescar la lista de movimientos
+        }}
+      />
     </View>
   );
 }
@@ -163,6 +181,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  createButton: {
+    borderRadius: 12,
+    shadowColor: '#6CB4EE',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  createButtonContent: {
+    paddingVertical: 8,
+    paddingHorizontal: 24,
+  },
+  createButtonLabel: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   text: {
     color: '#666666',

@@ -1,5 +1,6 @@
 import { Usuario } from "@/features/auth/interfaces/usuario.interface";
 import { MedioPagoElemento } from "@/features/medio-pago/interfaces/medio-pago.interface";
+import { SearchResponse } from "@/types/api.types";
 
 export interface MedioPagoInfoInicial {
   medioPagoId: number;
@@ -23,3 +24,5 @@ export interface InfoInicialResponse {
   mediosPago: MedioPagoElemento[];
   montoTotal: number;
 }
+
+export type InfoInicialPorUsuarioResponse = SearchResponse<InfoInicialResponse>;

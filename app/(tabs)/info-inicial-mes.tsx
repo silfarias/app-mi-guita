@@ -21,7 +21,7 @@ export default function InfoInicialMesScreen() {
   const opacity = useSharedValue(0);
   const insets = useSafeAreaInsets();
 
-  const user = useAuthStore((state) => state.usuario?.persona?.nombre || '');
+  const user = useAuthStore((state) => state.usuario?.persona?.nombre || 'Usuario');
   const { logout, loading: logoutLoading } = useLogout();
   const { data: infoInicial, loading: loadingInfo, error: errorInfo, fetch } = useInfoInicialPorUsuario();
 

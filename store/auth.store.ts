@@ -9,12 +9,13 @@ interface AuthState {
   usuario: Usuario | null;
   isAuthenticated: boolean;
 
-  // Acciones
-  setAuth: (token: string, usuario: Usuario) => void;
-  logout: () => void;
-  updateUsuario: (usuario: Partial<Usuario>) => void;
-  initializeAuth: () => Promise<void>;
-  clearStorage: () => Promise<void>;
+      // Acciones
+      setAuth: (token: string, usuario: Usuario) => void;
+      setUsuario: (usuario: Usuario) => void;
+      logout: () => void;
+      updateUsuario: (usuario: Partial<Usuario>) => void;
+      initializeAuth: () => Promise<void>;
+      clearStorage: () => Promise<void>;
 }
 
 /**
@@ -42,6 +43,14 @@ export const useAuthStore = create<AuthState>()(
           usuario,
           isAuthenticated: true,
         });
+      },
+
+      // Función para actualizar solo el usuario (útil después de editar perfil)
+      setUsuario: (usuario: Usuario) => {
+        set((state) => ({
+          usuario,
+          isAuthenticated: state.isAuthenticated,
+        }));
       },
 
       // Función para hacer logout

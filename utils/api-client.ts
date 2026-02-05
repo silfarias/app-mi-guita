@@ -19,7 +19,7 @@ export function buildSearchQuery(params?: Record<string, QueryValue>): string {
 export async function fetchAuthGet<T>(
   token: string,
   path: string,
-  options: { defaultError: string; notFoundError?: string }
+  options: { defaultError: string; notFoundError?: string; allowEmpty?: boolean }
 ): Promise<T> {
   const url = path.startsWith("http") ? path : `${API_URL}${path}`;
   const response = await fetch(url, {
@@ -32,7 +32,14 @@ export async function fetchAuthGet<T>(
 
   if (!response.ok) {
     if (response.status === 401) throw new Error(UNAUTHORIZED_MESSAGE);
-    if (response.status === 404 && options.notFoundError) throw new Error(options.notFoundError);
+    // Si allowEmpty es true y el status es 404, retornar respuesta vacía en lugar de error
+    if (response.status === 404) {
+      if (options.allowEmpty) {
+        // Retornar estructura vacía para SearchResponse
+        return { data: [], metadata: { count: 0, pageSize: 10, pageNumber: 1, totalPages: 0 } } as T;
+      }
+      if (options.notFoundError) throw new Error(options.notFoundError);
+    }
     let message = options.defaultError;
     try {
       const data = await response.json();

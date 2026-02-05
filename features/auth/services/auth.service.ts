@@ -1,5 +1,6 @@
 import { API_URL } from "@/constants/api";
 import { ChangePasswordRequest, ChangePasswordResponse } from "../interfaces/change-password.interface";
+import { EditUserRequest, EditUserResponse } from "../interfaces/edit-user.interface";
 import { LoginRequest, LoginResponse } from "../interfaces/login.interface";
 import { SignupRequest, SignupResponse } from "../interfaces/signup.interface";
 import { Usuario } from "../interfaces/usuario.interface";
@@ -117,5 +118,61 @@ export class AuthService {
       throw new Error(errorData?.errorDetails?.message || "Error al cambiar contraseña");
     }
     return response.json();
+  }
+
+  async editUser(token: string, userId: number, request: EditUserRequest): Promise<EditUserResponse> {
+    const formData = new FormData();
+    formData.append('nombre', request.nombre);
+    formData.append('apellido', request.apellido);
+    formData.append('nombreUsuario', request.nombreUsuario);
+    formData.append('email', request.email);
+    
+    // Manejar fotoPerfil (nueva imagen)
+    if (request.fotoPerfil) {
+      if (request.fotoPerfil instanceof File) {
+        formData.append('fotoPerfil', request.fotoPerfil);
+      } else if (request.fotoPerfil instanceof Blob) {
+        formData.append('fotoPerfil', request.fotoPerfil, 'foto-perfil.jpg');
+      } else {
+        const photoUri = request.fotoPerfil as any;
+        formData.append('fotoPerfil', {
+          uri: photoUri.uri || photoUri,
+          type: photoUri.type || 'image/jpeg',
+          name: photoUri.name || 'foto-perfil.jpg',
+        } as any);
+      }
+    }
+    
+    // Manejar urlFotoPerfil (URL de la foto actual)
+    if (request.urlFotoPerfil !== undefined) {
+      formData.append('urlFotoPerfil', request.urlFotoPerfil || '');
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/usuario/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        let errorMessage = "Error al actualizar usuario";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData?.errorDetails?.message || errorMessage;
+        } catch {
+          errorMessage = `Error ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+      return response.json();
+    } catch (error) {
+      if (error instanceof TypeError && error.message === 'Network request failed') {
+        throw new Error(NETWORK_ERROR_MESSAGE(API_URL));
+      }
+      throw error;
+    }
   }
 }

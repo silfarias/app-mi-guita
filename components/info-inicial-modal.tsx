@@ -4,8 +4,8 @@ import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
 import { getCurrentMonth, getCurrentYear } from '@/utils/date';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { Button, Menu, Text } from 'react-native-paper';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Button, Menu, Text, TextInput } from 'react-native-paper';
 import Toast from 'react-native-toast-message';
 import { MedioPagoModal } from './medio-pago-modal';
 
@@ -126,7 +126,7 @@ export function InfoInicialModal({
   const handleAgregarMedioPago = () => {
     // Agregar un nuevo item temporal sin medio de pago seleccionado
     const tempId = `temp-${Date.now()}`;
-    setMediosPagoEdit((prev) => [...prev, { medioPagoId: null, monto: 0, tempId }]);
+    setMediosPagoEdit((prev) => [{ medioPagoId: null, monto: 0, tempId }, ...prev]);
   };
 
   const handleSeleccionarMedioPago = (medioPagoId: number) => {
@@ -472,13 +472,18 @@ export function InfoInicialModal({
                           </TouchableOpacity>
                         </View>
                         <TextInput
-                          style={styles.montoInput}
+                          label="Monto"
+                          placeholder="0.00"
                           value={montoTextInputs[getInputKey(medioEdit.medioPagoId, medioEdit.tempId)] || (medioEdit.monto > 0 ? formatMonto(medioEdit.monto) : '')}
                           onChangeText={(text) => handleMontoChange(medioEdit.medioPagoId, medioEdit.tempId, text)}
                           onBlur={() => handleMontoBlur(medioEdit.medioPagoId, medioEdit.tempId)}
-                          placeholder="$ 0,00"
+                          mode="outlined"
                           keyboardType="numeric"
-                          returnKeyType="done"
+                          disabled={isLoading}
+                          style={styles.input}
+                          contentStyle={styles.inputContent}
+                          outlineStyle={styles.inputOutline}
+                          left={<TextInput.Icon icon="currency-usd" />}
                         />
                       </View>
                     );
@@ -598,14 +603,16 @@ const styles = StyleSheet.create({
     color: '#666666',
     marginTop: 2,
   },
-  montoInput: {
+  input: {
+    marginBottom: 20,
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  },
+  inputContent: {
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+  },
+  inputOutline: {
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
   errorText: {
     color: '#D32F2F',

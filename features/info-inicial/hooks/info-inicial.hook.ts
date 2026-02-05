@@ -46,11 +46,14 @@ export function useInfoInicialPorUsuario() {
       setError('No hay sesión activa');
       return;
     }
+    setError(null); // Limpiar error antes de hacer la petición
     await run(
       async () => {
         const response = await infoInicialService.getByUsuario(accessToken);
-        setData(response.data);
-        setMetadata(response.metadata);
+        // Siempre establecer los datos, incluso si está vacío
+        setData(response.data || []);
+        setMetadata(response.metadata || { count: 0, pageSize: 10, pageNumber: 1, totalPages: 0 });
+        setError(null); // Asegurar que no hay error cuando la respuesta es exitosa (aunque vacía)
         return response;
       },
       { errorFallback: 'Error al obtener la información inicial', logLabel: 'infoInicial.getByUsuario' }

@@ -17,6 +17,7 @@ export class InfoInicialService {
   async getByUsuario(token: string): Promise<InfoInicialPorUsuarioResponse> {
     return fetchAuthGet<InfoInicialPorUsuarioResponse>(token, `/info-inicial/por-usuario`, {
       defaultError: "Error al obtener la información inicial",
+      allowEmpty: true, // Permitir respuesta vacía sin lanzar error
     });
   }
 

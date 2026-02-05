@@ -20,6 +20,7 @@ import {
 
 import { MiGuitaBrand } from '@/components/miguita-brand';
 import { useSignupForm } from '@/features/auth/hooks/auth.hook';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
@@ -102,21 +103,23 @@ export default function RegisterScreen() {
                   <Text variant="bodyMedium" style={styles.photoLabel}>
                     Foto de Perfil (Opcional)
                   </Text>
-                  <View style={styles.photoSelector}>
+                  <View style={styles.photoSelectorContainer}>
                     {value ? (
-                      <View style={styles.photoPreview}>
-                        <Image 
-                          source={{ uri: (value as any)?.uri || String(value) }} 
-                          style={styles.photoImage} 
-                        />
+                      <>
+                        <View style={styles.photoPreview}>
+                          <Image 
+                            source={{ uri: (value as any)?.uri || String(value) }} 
+                            style={styles.photoImage} 
+                          />
+                        </View>
                         <TouchableOpacity
                           style={styles.removePhotoButton}
                           onPress={removeImage}
                           disabled={loading}
                         >
-                          <Text style={styles.removePhotoText}>✕</Text>
+                          <MaterialCommunityIcons name="close" size={20} color="#FFFFFF" />
                         </TouchableOpacity>
-                      </View>
+                      </>
                     ) : (
                       <TouchableOpacity
                         style={styles.photoPlaceholder}
@@ -446,6 +449,11 @@ const styles = StyleSheet.create({
     color: '#666666',
     marginBottom: 12,
   },
+  photoSelectorContainer: {
+    width: 120,
+    height: 120,
+    position: 'relative',
+  },
   photoSelector: {
     width: 120,
     height: 120,
@@ -457,7 +465,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 3,
     borderColor: '#6CB4EE',
-    position: 'relative',
   },
   photoImage: {
     width: '100%',
@@ -465,27 +472,16 @@ const styles = StyleSheet.create({
   },
   removePhotoButton: {
     position: 'absolute',
-    top: 4,
-    right: 4,
+    bottom: 0,
+    right: 0,
     backgroundColor: '#D32F2F',
-    borderRadius: 15,
-    width: 25,
-    height: 25,
+    borderRadius: 20,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  removePhotoText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
   },
   photoPlaceholder: {
     width: 120,

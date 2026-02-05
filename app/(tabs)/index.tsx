@@ -1,6 +1,8 @@
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
+import { InfoInicialModal } from '@/components/info-inicial-modal';
 import { MovimientoModal } from '@/components/movimiento-modal';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
+import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { useDeleteMovimiento, useMovimientosPorInfo } from '@/features/movimiento/hooks/movimiento.hook';
 import { TipoMovimientoEnum } from '@/features/movimiento/interfaces/movimiento.interface';
 import { useReporteMensual } from '@/features/reporte/hooks/reporte.hook';
@@ -23,6 +25,7 @@ export default function HomeScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMovimientoModalVisible, setIsMovimientoModalVisible] = useState(false);
   const [isConfirmacionModalVisible, setIsConfirmacionModalVisible] = useState(false);
+  const [isInfoInicialModalVisible, setIsInfoInicialModalVisible] = useState(false);
   const [movimientoSeleccionado, setMovimientoSeleccionado] = useState<number | null>(null);
   const [menuVisible, setMenuVisible] = useState<number | null>(null);
   const [movimientosExpandidos, setMovimientosExpandidos] = useState<Set<number>>(new Set());
@@ -30,11 +33,12 @@ export default function HomeScreen() {
   const opacity = useSharedValue(0);
   const insets = useSafeAreaInsets();
 
-  const user = useAuthStore((state) => state.usuario?.persona?.nombre || '');
+  const user = useAuthStore((state) => state.usuario?.persona?.nombre || 'Usuario');
   const { logout, loading: logoutLoading } = useLogout();
   const { data: movimientosData, loading: movimientosLoading, error: movimientosError, fetchMovimientos } = useMovimientosPorInfo();
   const { data: reporteData, loading: reporteLoading, error: reporteError, fetchReporteMensual } = useReporteMensual();
   const { deleteMovimiento, loading: deleting } = useDeleteMovimiento();
+  const { data: infoIniciales, loading: loadingInfoInicial, fetch: fetchInfoIniciales } = useInfoInicialPorUsuario();
 
   const currentMonth = getCurrentMonth();
   const currentYear = getCurrentYear();
@@ -43,7 +47,14 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchMovimientos();
     fetchReporteMensual({ anio: currentYear, mes: currentMonth });
+    fetchInfoIniciales();
   }, []);
+
+  // Verificar si hay info inicial para el mes actual
+  const infoInicialDelMes = infoIniciales?.find(
+    (info) => info.mes === currentMonth && info.anio === currentYear
+  );
+  const tieneInfoInicial = !!infoInicialDelMes;
 
   const toggleMenu = () => {
     const newState = !isMenuOpen;
@@ -192,7 +203,7 @@ export default function HomeScreen() {
         }
       >
         {/* Dashboard - Resumen Principal */}
-        {reporteData && (
+        {tieneInfoInicial && reporteData && (
           <>
             {/* Cards de Resumen */}
             <View style={styles.resumenContainer}>
@@ -388,28 +399,57 @@ export default function HomeScreen() {
           </>
         )}
 
-        {/* Botón crear movimiento */}
-        <Button
-          mode="contained"
-          onPress={() => setIsMovimientoModalVisible(true)}
-          style={styles.createButton}
-          contentStyle={styles.createButtonContent}
-          labelStyle={styles.createButtonLabel}
-          icon="plus-circle"
-        >
-          Crear Movimiento
-        </Button>
+        {/* Botón crear movimiento o crear info inicial */}
+        {!tieneInfoInicial ? (
+          <Card style={styles.infoInicialCard}>
+            <Card.Content>
+              <View style={styles.infoInicialContent}>
+                <MaterialCommunityIcons name="wallet-outline" size={48} color="#6CB4EE" />
+                <Text variant="titleMedium" style={styles.infoInicialTitle}>
+                  Configura tu mes
+                </Text>
+                <Text variant="bodyMedium" style={styles.infoInicialText}>
+                  Para comenzar a registrar movimientos, primero debes configurar la información inicial del mes
+                </Text>
+                <Button
+                  mode="contained"
+                  onPress={() => setIsInfoInicialModalVisible(true)}
+                  style={styles.infoInicialButton}
+                  contentStyle={styles.infoInicialButtonContent}
+                  labelStyle={styles.infoInicialButtonLabel}
+                  icon="wallet"
+                  buttonColor="#6CB4EE"
+                >
+                  Configurar Información Inicial
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        ) : (
+          <Button
+            mode="contained"
+            onPress={() => setIsMovimientoModalVisible(true)}
+            style={styles.createButton}
+            contentStyle={styles.createButtonContent}
+            labelStyle={styles.createButtonLabel}
+            icon="plus-circle"
+          >
+            Crear Movimiento
+          </Button>
+        )}
 
-        {/* Últimos Movimientos (máximo 5) */}
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#6CB4EE" />
-            <Text variant="bodyMedium" style={styles.loadingText}>
-              Cargando información...
-            </Text>
-          </View>
-        ) : movimientosError || reporteError ? (
-          <Card style={styles.errorCard}>
+        {/* Últimos Movimientos (máximo 5) - Solo si hay info inicial */}
+        {tieneInfoInicial && (
+          <>
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#6CB4EE" />
+                <Text variant="bodyMedium" style={styles.loadingText}>
+                  Cargando información...
+                </Text>
+              </View>
+            ) : movimientosError || reporteError ? (
+              <Card style={styles.errorCard}>
             <Card.Content>
               <View style={styles.errorContent}>
                 <MaterialCommunityIcons name="alert-circle" size={48} color="#D32F2F" />
@@ -425,8 +465,8 @@ export default function HomeScreen() {
                 </Button>
               </View>
             </Card.Content>
-          </Card>
-        ) : ultimosMovimientos.length === 0 ? (
+              </Card>
+            ) : ultimosMovimientos.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Card.Content>
               <View style={styles.emptyContent}>
@@ -557,6 +597,8 @@ export default function HomeScreen() {
             })}
           </View>
         )}
+          </>
+        )}
       </ScrollView>
 
       {/* Backdrop oscuro */}
@@ -618,6 +660,17 @@ export default function HomeScreen() {
           fetchMovimientos();
           fetchReporteMensual({ anio: currentYear, mes: currentMonth });
           setMovimientoSeleccionado(null);
+        }}
+      />
+
+      {/* Modal de Crear Información Inicial */}
+      <InfoInicialModal
+        visible={isInfoInicialModalVisible}
+        onDismiss={() => setIsInfoInicialModalVisible(false)}
+        onSuccess={() => {
+          fetchInfoIniciales();
+          fetchMovimientos();
+          fetchReporteMensual({ anio: currentYear, mes: currentMonth });
         }}
       />
 
@@ -1069,5 +1122,38 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#D32F2F',
+  },
+  infoInicialCard: {
+    marginBottom: 24,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    elevation: 2,
+  },
+  infoInicialContent: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  infoInicialTitle: {
+    marginTop: 16,
+    marginBottom: 8,
+    fontWeight: 'bold',
+    color: '#333333',
+    textAlign: 'center',
+  },
+  infoInicialText: {
+    marginBottom: 24,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  infoInicialButton: {
+    borderRadius: 12,
+  },
+  infoInicialButtonContent: {
+    paddingVertical: 8,
+  },
+  infoInicialButtonLabel: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 
 import { useAuthStore } from '../../../store/auth.store';
 import { ChangePasswordRequest } from '../interfaces/change-password.interface';
+import { EditUserRequest } from '../interfaces/edit-user.interface';
 import { LoginRequest } from '../interfaces/login.interface';
 import { SignupRequest } from '../interfaces/signup.interface';
 import { Usuario } from '../interfaces/usuario.interface';
@@ -185,4 +186,37 @@ export function useChangePassword() {
   };
 
   return { changePassword, loading, error, success, setError, setSuccess };
+}
+
+export function useEditUser() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const setUsuario = useAuthStore((s) => s.setUsuario);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const editUser = async (userId: number, request: EditUserRequest) => {
+    if (!accessToken) {
+      setError('No hay sesión activa');
+      return false;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+    try {
+      const response = await authService.editUser(accessToken, userId, request);
+      // Actualizar el usuario en el store
+      setUsuario(response.usuario);
+      setSuccess('Usuario actualizado exitosamente');
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al actualizar usuario');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { editUser, loading, error, success, setError, setSuccess };
 }

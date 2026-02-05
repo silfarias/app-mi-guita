@@ -17,7 +17,7 @@ export function useMovimientoForm() {
   const { loading, error, setError, run } = useAsyncRun();
   const [data, setData] = useState<MovimientoResponse | null>(null);
 
-  const { control, handleSubmit, formState: { errors }, reset: resetForm } = useForm<MovimientoRequest>({
+  const { control, handleSubmit, formState: { errors }, reset: resetForm, watch } = useForm<MovimientoRequest>({
     defaultValues: {
       infoInicialId: 0,
       fecha: new Date().toISOString().split('T')[0],
@@ -64,5 +64,6 @@ export function useMovimientoForm() {
     errors,
     onSubmit,
     reset,
+    watch,
   };
 }

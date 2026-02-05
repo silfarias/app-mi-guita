@@ -1,3 +1,5 @@
+import { CategoriaModal } from '@/components/categoria-modal';
+import { MedioPagoModal } from '@/components/medio-pago-modal';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
@@ -9,9 +11,7 @@ import { useMemo, useEffect, useState } from 'react';
 import { Controller } from 'react-hook-form';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -35,56 +35,32 @@ export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoMod
     error,
     data,
     reset,
+    watch,
   } = useMovimientoForm();
+  
+  // Observar cambios en los valores del formulario para forzar re-render
+  const categoriaId = watch('categoriaId');
+  const medioPagoId = watch('medioPagoId');
 
-  const { data: categorias, loading: categoriasLoading, fetchCategorias } = useCategorias({ activo: true });
-  const { data: mediosPago, loading: mediosPagoLoading, fetchMediosPago } = useMediosPago();
+  const { data: categorias, fetchCategorias } = useCategorias({ activo: true });
+  const { data: mediosPago, fetchMediosPago } = useMediosPago();
   const { data: infoInicial, loading: infoInicialLoading, fetch: fetchInfoInicial } = useInfoInicialPorUsuario();
 
   const [tipoMovimiento, setTipoMovimiento] = useState<TipoMovimientoEnum>(TipoMovimientoEnum.EGRESO);
   const [categoriaMenuVisible, setCategoriaMenuVisible] = useState(false);
   const [medioPagoMenuVisible, setMedioPagoMenuVisible] = useState(false);
   const [movimientoCreado, setMovimientoCreado] = useState(false);
-  const [categoriaSearchText, setCategoriaSearchText] = useState('');
-  
-  // Efecto para cargar todas las categorías cuando se abre el modal de categorías
-  useEffect(() => {
-    if (categoriaMenuVisible) {
-      // Si no hay texto de búsqueda, cargar todas las categorías
-      if (!categoriaSearchText) {
-        fetchCategorias({ activo: true });
-      }
-    } else {
-      // Resetear búsqueda cuando se cierra el modal
-      setCategoriaSearchText('');
-    }
-  }, [categoriaMenuVisible]);
-
-  // Efecto para buscar categorías cuando cambia el texto de búsqueda
-  useEffect(() => {
-    if (categoriaMenuVisible && categoriaSearchText && categoriaSearchText.trim()) {
-      const timer = setTimeout(() => {
-        fetchCategorias({ 
-          activo: true,
-          nombre: categoriaSearchText.trim() 
-        });
-      }, 300); // Debounce de 300ms
-      
-      return () => clearTimeout(timer);
-    }
-  }, [categoriaSearchText]);
 
   useEffect(() => {
     if (visible) {
+      fetchInfoInicial();
       fetchCategorias({ activo: true });
       fetchMediosPago();
-      fetchInfoInicial();
       reset();
       setTipoMovimiento(TipoMovimientoEnum.EGRESO);
       setCategoriaMenuVisible(false);
       setMedioPagoMenuVisible(false);
       setMovimientoCreado(false);
-      setCategoriaSearchText('');
     }
   }, [visible]);
 
@@ -147,9 +123,8 @@ export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoMod
     }
   };
 
-  // Solo mostrar loading inicial cuando se está cargando la info inicial o medios de pago
-  // El loading de categorías no debe ocultar el formulario
-  const isLoading = mediosPagoLoading || infoInicialLoading;
+  // Solo mostrar loading inicial cuando se está cargando la info inicial
+  const isLoading = infoInicialLoading;
 
   return (
     <Portal>
@@ -340,7 +315,11 @@ export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoMod
                     validate: (value) => value > 0 || 'Debes seleccionar una categoría',
                   }}
                   render={({ field: { onChange, value } }) => {
-                    const categoriaSeleccionada = categorias.find((cat) => cat.id === value);
+                    // Usar el valor observado para asegurar re-render cuando cambie
+                    const currentValue = categoriaId !== undefined ? categoriaId : value;
+                    const categoriaSeleccionada = currentValue > 0 
+                      ? categorias.find((cat) => cat.id === currentValue)
+                      : undefined;
                     return (
                       <View>
                         <Text variant="bodyMedium" style={styles.selectLabel}>
@@ -384,119 +363,13 @@ export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoMod
                         </TouchableOpacity>
                         
                         {/* Modal para seleccionar categoría */}
-                        <Modal
+                        <CategoriaModal
                           visible={categoriaMenuVisible}
-                          transparent
-                          animationType="fade"
-                          onRequestClose={() => setCategoriaMenuVisible(false)}
-                        >
-                          <View style={styles.pickerBackdrop}>
-                            <TouchableOpacity
-                              style={StyleSheet.absoluteFill}
-                              activeOpacity={1}
-                              onPress={() => setCategoriaMenuVisible(false)}
-                            />
-                            <View style={styles.pickerContainer}>
-                              <View style={styles.pickerContent}>
-                                <View style={styles.pickerHeader}>
-                                  <Text variant="headlineSmall" style={styles.pickerTitle}>
-                                    Seleccionar Categoría
-                                  </Text>
-                                  <TouchableOpacity
-                                    onPress={() => setCategoriaMenuVisible(false)}
-                                    style={styles.pickerCloseButton}
-                                  >
-                                    <MaterialCommunityIcons name="close" size={24} color="#333333" />
-                                  </TouchableOpacity>
-                                </View>
-                                {/* Buscador de categorías */}
-                                <View style={styles.pickerSearchContainer}>
-                                  <TextInput
-                                    placeholder="Buscar categoría..."
-                                    value={categoriaSearchText}
-                                    onChangeText={setCategoriaSearchText}
-                                    mode="outlined"
-                                    style={styles.pickerSearchInput}
-                                    contentStyle={styles.pickerSearchInputContent}
-                                    outlineStyle={styles.pickerSearchInputOutline}
-                                    left={<TextInput.Icon icon="magnify" />}
-                                    right={
-                                      categoriaSearchText ? (
-                                        <TextInput.Icon
-                                          icon="close"
-                                          onPress={() => setCategoriaSearchText('')}
-                                        />
-                                      ) : undefined
-                                    }
-                                  />
-                                </View>
-                                {categoriasLoading ? (
-                                  <View style={styles.pickerLoadingContainer}>
-                                    <ActivityIndicator size="small" color="#6CB4EE" />
-                                    <Text variant="bodySmall" style={styles.pickerLoadingText}>
-                                      Buscando categorías...
-                                    </Text>
-                                  </View>
-                                ) : (
-                                  <ScrollView style={styles.pickerScrollView}>
-                                    {categorias.length === 0 ? (
-                                      <View style={styles.pickerEmptyContainer}>
-                                        <MaterialCommunityIcons name="magnify" size={48} color="#999999" />
-                                        <Text variant="bodyMedium" style={styles.pickerEmptyText}>
-                                          No se encontraron categorías
-                                        </Text>
-                                        {categoriaSearchText && (
-                                          <Text variant="bodySmall" style={styles.pickerEmptySubtext}>
-                                            Intenta con otro término de búsqueda
-                                          </Text>
-                                        )}
-                                      </View>
-                                    ) : (
-                                      categorias.map((categoria) => (
-                                        <TouchableOpacity
-                                          key={categoria.id}
-                                          onPress={() => {
-                                            onChange(categoria.id);
-                                            setCategoriaMenuVisible(false);
-                                          }}
-                                          style={[
-                                            styles.pickerItem,
-                                            value === categoria.id && styles.pickerItemSelected,
-                                          ]}
-                                        >
-                                          <View style={styles.pickerItemContent}>
-                                            <MaterialCommunityIcons
-                                              name={categoria.icono as any}
-                                              size={24}
-                                              color={categoria.color}
-                                              style={styles.pickerItemIcon}
-                                            />
-                                            <View style={styles.pickerItemTextContainer}>
-                                              <Text
-                                                variant="bodyLarge"
-                                                style={[styles.pickerItemText, { color: categoria.color }]}
-                                              >
-                                                {categoria.nombre}
-                                              </Text>
-                                              {categoria.descripcion && (
-                                                <Text variant="bodySmall" style={styles.pickerItemDescription}>
-                                                  {categoria.descripcion}
-                                                </Text>
-                                              )}
-                                            </View>
-                                          </View>
-                                          {value === categoria.id && (
-                                            <MaterialCommunityIcons name="check" size={24} color={categoria.color} />
-                                          )}
-                                        </TouchableOpacity>
-                                      ))
-                                    )}
-                                  </ScrollView>
-                                )}
-                              </View>
-                            </View>
-                          </View>
-                        </Modal>
+                          onDismiss={() => setCategoriaMenuVisible(false)}
+                          onSelect={onChange}
+                          selectedValue={value}
+                          disabled={loading}
+                        />
                       </View>
                     );
                   }}
@@ -554,7 +427,12 @@ export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoMod
                     validate: (value) => value > 0 || 'Debes seleccionar un medio de pago',
                   }}
                   render={({ field: { onChange, value } }) => {
-                    const medioSeleccionado = mediosPago.find((medio) => medio.id === value);
+                    // Usar el valor observado para asegurar re-render cuando cambie
+                    const currentValue = medioPagoId !== undefined ? medioPagoId : value;
+                    const medioSeleccionado = currentValue > 0
+                      ? mediosPago.find((medio: { id: number }) => medio.id === currentValue)
+                      : undefined;
+                    
                     return (
                       <View>
                         <Text variant="bodyMedium" style={styles.selectLabel}>
@@ -595,64 +473,13 @@ export function MovimientoModal({ visible, onDismiss, onSuccess }: MovimientoMod
                         </TouchableOpacity>
                         
                         {/* Modal para seleccionar medio de pago */}
-                        <Modal
+                        <MedioPagoModal
                           visible={medioPagoMenuVisible}
-                          transparent
-                          animationType="fade"
-                          onRequestClose={() => setMedioPagoMenuVisible(false)}
-                        >
-                          <TouchableOpacity
-                            style={styles.pickerBackdrop}
-                            activeOpacity={1}
-                            onPress={() => setMedioPagoMenuVisible(false)}
-                          >
-                            <View style={styles.pickerContainer}>
-                              <View style={styles.pickerContent}>
-                                <View style={styles.pickerHeader}>
-                                  <Text variant="headlineSmall" style={styles.pickerTitle}>
-                                    Seleccionar Medio de Pago
-                                  </Text>
-                                  <TouchableOpacity
-                                    onPress={() => setMedioPagoMenuVisible(false)}
-                                    style={styles.pickerCloseButton}
-                                  >
-                                    <MaterialCommunityIcons name="close" size={24} color="#333333" />
-                                  </TouchableOpacity>
-                                </View>
-                                <ScrollView style={styles.pickerScrollView}>
-                                  {mediosPago.map((medio) => (
-                                    <TouchableOpacity
-                                      key={medio.id}
-                                      onPress={() => {
-                                        onChange(medio.id);
-                                        setMedioPagoMenuVisible(false);
-                                      }}
-                                      style={[
-                                        styles.pickerItem,
-                                        value === medio.id && styles.pickerItemSelected,
-                                      ]}
-                                    >
-                                      <View style={styles.pickerItemContent}>
-                                        <MaterialCommunityIcons
-                                          name={medio.tipo === 'BILLETERA_VIRTUAL' ? 'wallet' : 'bank'}
-                                          size={24}
-                                          color="#6CB4EE"
-                                          style={styles.pickerItemIcon}
-                                        />
-                                        <Text variant="bodyLarge" style={styles.pickerItemText}>
-                                          {medio.nombre}
-                                        </Text>
-                                      </View>
-                                      {value === medio.id && (
-                                        <MaterialCommunityIcons name="check" size={24} color="#6CB4EE" />
-                                      )}
-                                    </TouchableOpacity>
-                                  ))}
-                                </ScrollView>
-                              </View>
-                            </View>
-                          </TouchableOpacity>
-                        </Modal>
+                          onDismiss={() => setMedioPagoMenuVisible(false)}
+                          onSelect={onChange}
+                          selectedValue={value}
+                          disabled={loading}
+                        />
                       </View>
                     );
                   }}
@@ -873,120 +700,6 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     color: '#333333',
-  },
-  pickerBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pickerContainer: {
-    width: '90%',
-    maxWidth: 400,
-    maxHeight: '80%',
-  },
-  pickerContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  pickerTitle: {
-    fontWeight: 'bold',
-    color: '#333333',
-  },
-  pickerCloseButton: {
-    padding: 4,
-  },
-  pickerSearchContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  pickerSearchInput: {
-    backgroundColor: '#FFFFFF',
-  },
-  pickerSearchInputContent: {
-    fontSize: 16,
-  },
-  pickerSearchInputOutline: {
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  pickerLoadingContainer: {
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickerLoadingText: {
-    marginTop: 12,
-    color: '#666666',
-  },
-  pickerEmptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pickerEmptyText: {
-    marginTop: 16,
-    color: '#666666',
-    textAlign: 'center',
-  },
-  pickerEmptySubtext: {
-    marginTop: 8,
-    color: '#999999',
-    textAlign: 'center',
-  },
-  pickerScrollView: {
-    maxHeight: 400,
-  },
-  pickerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  pickerItemSelected: {
-    backgroundColor: '#F5F5F5',
-  },
-  pickerItemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  pickerItemIcon: {
-    marginRight: 12,
-  },
-  pickerItemTextContainer: {
-    flex: 1,
-  },
-  pickerItemText: {
-    fontWeight: '500',
-    color: '#333333',
-  },
-  pickerItemDescription: {
-    marginTop: 4,
-    color: '#666666',
   },
   fieldError: {
     color: '#C62828',

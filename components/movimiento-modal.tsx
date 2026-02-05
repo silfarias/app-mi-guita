@@ -586,7 +586,7 @@ export function MovimientoModal({ visible, onDismiss, onSuccess, movimientoId }:
                     contentStyle={styles.buttonContent}
                     labelStyle={styles.buttonLabel}
                   >
-                    {loading ? (isEditMode ? 'Actualizando...' : 'Creando...') : (isEditMode ? 'Actualizar Movimiento' : 'Crear Movimiento')}
+                    {loading ? (isEditMode ? 'Actualizando...' : 'Creando...') : (isEditMode ? 'Actualizar' : 'Guardar')}
                   </Button>
                 </View>
               </ScrollView>

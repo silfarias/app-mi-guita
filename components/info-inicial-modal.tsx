@@ -401,15 +401,17 @@ export function InfoInicialModal({
                   <Text variant="titleMedium" style={styles.modalSectionTitle}>
                     Medios de Pago
                   </Text>
-                  <TouchableOpacity
-                    style={styles.agregarButton}
-                    onPress={handleAgregarMedioPago}
-                  >
-                    <MaterialCommunityIcons name="plus-circle" size={20} color="#6CB4EE" />
-                    <Text variant="bodyMedium" style={styles.agregarButtonText}>
-                      Agregar
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={styles.agregarButtonContainer}>
+                    <TouchableOpacity
+                      style={styles.agregarButton}
+                      onPress={handleAgregarMedioPago}
+                    >
+                      <MaterialCommunityIcons name="plus-circle" size={20} color="#6CB4EE" />
+                      <Text variant="bodyMedium" style={styles.agregarButtonText}>
+                        Agregar
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {mediosPagoEdit.length === 0 ? (
@@ -570,7 +572,8 @@ const styles = StyleSheet.create({
   modalSectionTitle: {
     fontWeight: '600',
     color: '#333333',
-    marginBottom: 16,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   medioPagoEditItem: {
     marginBottom: 16,
@@ -661,18 +664,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  agregarButtonContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   agregarButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: '#E3F2FD'
+    backgroundColor: '#E3F2FD',
   },
   agregarButtonText: {
     color: '#6CB4EE',
     fontWeight: '600',
+    fontSize: 13,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+    flexShrink: 0,
   },
   emptyMediosPago: {
     alignItems: 'center',

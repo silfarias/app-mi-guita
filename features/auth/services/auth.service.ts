@@ -103,10 +103,13 @@ export class AuthService {
     return response.json();
   }
 
-  async changePassword(request: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+  async changePassword(token: string, request: ChangePasswordRequest): Promise<ChangePasswordResponse> {
     const response = await fetch(`${API_URL}/auth/change-password`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
       body: JSON.stringify(request),
     });
     if (!response.ok) {

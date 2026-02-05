@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { useAuthStore } from '../../../store/auth.store';
+import { ChangePasswordRequest } from '../interfaces/change-password.interface';
 import { LoginRequest } from '../interfaces/login.interface';
 import { SignupRequest } from '../interfaces/signup.interface';
 import { Usuario } from '../interfaces/usuario.interface';
@@ -149,4 +150,39 @@ export function useProfile() {
   };
 
   return { usuario, loading, error, fetchProfile, refetch: fetchProfile };
+}
+
+export function useChangePassword() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const changePassword = async (request: ChangePasswordRequest) => {
+    if (!accessToken) {
+      setError('No hay sesión activa');
+      return false;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+    try {
+      if (request.contrasena !== request.confirmarContrasena) {
+        setError('Las contraseñas no coinciden');
+        setLoading(false);
+        return false;
+      }
+      await authService.changePassword(accessToken, request);
+      setSuccess('Contraseña cambiada exitosamente');
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cambiar contraseña');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { changePassword, loading, error, success, setError, setSuccess };
 }

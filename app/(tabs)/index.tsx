@@ -589,10 +589,6 @@ export default function HomeScreen() {
               <MaterialCommunityIcons name="account-circle" size={24} color="#333333" style={styles.menuIcon} />
               <Text variant="bodyLarge" style={styles.menuItemText}>Mi perfil</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.menuItem} onPress={closeMenu}>
-              <MaterialCommunityIcons name="swap-horizontal" size={24} color="#333333" style={styles.menuIcon} />
-              <Text variant="bodyLarge" style={styles.menuItemText}>Mis transacciones</Text>
-            </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -8,16 +8,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Card, Text } from 'react-native-paper';
 
 import { BoxProfile, BoxProfileStatus } from '@/components/box-profile';
+import { ChangePasswordModal } from '@/components/change-password-modal';
 import { useProfile } from '@/features/auth/hooks/auth.hook';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { formatDate } from '@/utils/formatDate';
 import { Header } from '@/components/ui/header';
 
 export default function ProfileScreen() {
   const { usuario, loading, error, fetchProfile } = useProfile();
+  const [isChangePasswordModalVisible, setIsChangePasswordModalVisible] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -77,11 +78,39 @@ export default function ProfileScreen() {
             <BoxProfile icon="account" title="Nombre Completo" value={usuario.persona.nombre + ' ' + usuario.persona.apellido} />
             <BoxProfile icon="account-circle" title="Nombre de Usuario" value={usuario.nombreUsuario} />
             <BoxProfile icon="email" title="Email" value={usuario.email} />
-            <BoxProfileStatus isActive={usuario.activo} />
-            <BoxProfile icon="clock-outline" title="Último Acceso" value={formatDate(usuario.ultimoAcceso)} />
+          </View>
+
+          {/* Sección de Configuración */}
+          <View style={styles.settingsContainer}>
+            <Text variant="titleMedium" style={styles.settingsTitle}>
+              Configuración
+            </Text>
+            <Card style={styles.settingsCard}>
+              <TouchableOpacity
+                style={styles.settingsItem}
+                onPress={() => setIsChangePasswordModalVisible(true)}
+              >
+                <View style={styles.settingsItemLeft}>
+                  <MaterialCommunityIcons name="lock-reset" size={24} color="#6CB4EE" />
+                  <Text variant="bodyLarge" style={styles.settingsItemText}>
+                    Cambiar Contraseña
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={24} color="#999999" />
+              </TouchableOpacity>
+            </Card>
           </View>
         </ScrollView>
       ) : null}
+
+      {/* Modal de Cambiar Contraseña */}
+      {usuario && (
+        <ChangePasswordModal
+          visible={isChangePasswordModalVisible}
+          onDismiss={() => setIsChangePasswordModalVisible(false)}
+          email={usuario.email}
+        />
+      )}
     </View>
   );
 }
@@ -150,5 +179,36 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     gap: 16,
+    marginBottom: 32,
+  },
+  settingsContainer: {
+    marginTop: 8,
+  },
+  settingsTitle: {
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 16,
+  },
+  settingsCard: {
+    backgroundColor: '#FFFFFF',
+    elevation: 2,
+    borderRadius: 12,
+  },
+  settingsItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  settingsItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  settingsItemText: {
+    color: '#333333',
+    fontWeight: '500',
   },
 });

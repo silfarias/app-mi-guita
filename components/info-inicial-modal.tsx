@@ -382,18 +382,12 @@ export function InfoInicialModal({
                       <Text variant="bodyMedium" style={styles.formLabel}>
                         Año
                       </Text>
-                      <TextInput
-                        style={styles.formInput}
-                        value={anio.toString()}
-                        onChangeText={(text) => {
-                          const anioNum = parseInt(text, 10);
-                          if (!isNaN(anioNum) && anioNum > 0) {
-                            setAnio(anioNum);
-                          }
-                        }}
-                        placeholder="2026"
-                        keyboardType="numeric"
-                      />
+                      <TouchableOpacity
+                        style={styles.formSelect}
+                        disabled={true}
+                      >
+                        <Text style={styles.formSelectText}>{anio}</Text>
+                      </TouchableOpacity>
                     </View>
                   </>
                 )}
@@ -582,9 +576,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   modalScrollView: {
-    maxHeight: 400,
+    height: 'auto',
     padding: 20,
-    marginTop: 0,
+    marginTop: 0
   },
   loadingContainer: {
     padding: 40,
@@ -656,11 +650,12 @@ const styles = StyleSheet.create({
   },
   formRow: {
     marginBottom: 0,
+    marginTop: 16
   },
   formLabel: {
     marginBottom: 8,
     color: '#666666',
-    fontWeight: '500',
+    fontWeight: '500' 
   },
   formSelect: {
     flexDirection: 'row',
@@ -695,6 +690,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    marginTop: 16,
   },
   agregarButtonContainer: {
     justifyContent: 'center',

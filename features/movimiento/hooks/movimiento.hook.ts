@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { useAuthStore } from '../../../store/auth.store';
-import { MovimientoRequest, MovimientoResponse, MovimientoSearchResponse, MovimientosPorInfoSearchResponse, TipoMovimientoEnum } from '../interfaces/movimiento.interface';
+import { MovimientoRequest, MovimientoResponse, MovimientoSearchResponse, MovimientosPorInfoSearchResponse, TipoMovimientoEnum, MovimientoFiltros } from '../interfaces/movimiento.interface';
 import { MovimientoService } from '../services/movimiento.service';
 import { useAsyncRun } from '../../../hooks/use-async-run';
 

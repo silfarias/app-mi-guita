@@ -1,6 +1,7 @@
 import { CategoriaModal } from '@/components/categoria-modal';
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
 import { MedioPagoModal } from '@/components/medio-pago-modal';
+import { MovimientoCard } from '@/components/movimiento-card';
 import { MovimientoModal } from '@/components/movimiento-modal';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
@@ -43,27 +44,6 @@ export default function ExploreScreen() {
   // Obtener movimientos
   const movimientosDelMes = movimientosData?.data?.[0]?.movimientos || [];
 
-  const formatCurrency = (amount: string) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 2,
-    }).format(parseFloat(amount));
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const diaSemana = diasSemana[date.getDay()];
-    const dia = date.getDate();
-    const mes = meses[date.getMonth()];
-    return `${diaSemana} ${dia} ${mes}`;
-  };
-
-  const getMedioPagoIcon = (tipo: string) => {
-    return tipo === 'BILLETERA_VIRTUAL' ? 'wallet' : 'bank';
-  };
 
   const handleEditarMovimiento = (movimientoId: number) => {
     setMovimientoSeleccionado(movimientoId);
@@ -382,110 +362,18 @@ export default function ExploreScreen() {
             {movimientosDelMes.map((movimiento) => {
               const isExpanded = movimientosExpandidos.has(movimiento.id);
               return (
-                <TouchableOpacity
+                <MovimientoCard
                   key={movimiento.id}
-                  activeOpacity={0.7}
+                  movimiento={movimiento}
+                  isExpanded={isExpanded}
                   onPress={() => toggleMovimientoExpandido(movimiento.id)}
-                >
-                  <Card style={styles.movimientoCard}>
-                    <Card.Content>
-                      <View style={styles.movimientoHeader}>
-                        <View style={styles.movimientoLeft}>
-                          <View
-                            style={[
-                              styles.categoriaIconContainer,
-                              { backgroundColor: `${movimiento.categoria.color}20` },
-                            ]}
-                          >
-                            <MaterialCommunityIcons
-                              name={movimiento.categoria.icono as any}
-                              size={24}
-                              color={movimiento.categoria.color}
-                            />
-                          </View>
-                          <View style={styles.movimientoInfo}>
-                            <Text
-                              variant="bodyLarge"
-                              style={styles.movimientoDescripcion}
-                              numberOfLines={isExpanded ? undefined : 2}
-                              ellipsizeMode="tail"
-                            >
-                              {movimiento.descripcion}
-                            </Text>
-                            <View style={styles.movimientoMeta}>
-                              <Text variant="bodySmall" style={styles.movimientoCategoria}>
-                                {movimiento.categoria.nombre}
-                              </Text>
-                              <Text variant="bodySmall" style={styles.movimientoFecha}>
-                                {formatDate(movimiento.fecha)}
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                        <View style={styles.movimientoRight}>
-                          <View style={styles.movimientoRightTop}>
-                            <Text
-                              variant="titleMedium"
-                              style={[
-                                styles.movimientoMonto,
-                                movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO
-                                  ? styles.movimientoMontoEgreso
-                                  : styles.movimientoMontoIngreso,
-                              ]}
-                            >
-                              {movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO ? '-' : '+'}
-                              {formatCurrency(movimiento.monto)}
-                            </Text>
-                            <Menu
-                              visible={menuVisible === movimiento.id}
-                              onDismiss={() => setMenuVisible(null)}
-                              anchor={
-                                <TouchableOpacity
-                                  onPress={(e) => {
-                                    e.stopPropagation();
-                                    setMenuVisible(movimiento.id);
-                                  }}
-                                  style={styles.menuButton}
-                                >
-                                  <MaterialCommunityIcons name="dots-vertical" size={24} color="#666666" />
-                                </TouchableOpacity>
-                              }
-                              contentStyle={styles.menuDropdownContent}
-                            >
-                              <Menu.Item
-                                onPress={() => {
-                                  setMenuVisible(null);
-                                  handleEditarMovimiento(movimiento.id);
-                                }}
-                                title="Editar"
-                                leadingIcon="pencil"
-                              />
-                              <Menu.Item
-                                onPress={() => {
-                                  setMenuVisible(null);
-                                  handleEliminarMovimiento(movimiento.id);
-                                }}
-                                title="Eliminar"
-                                leadingIcon="delete"
-                                titleStyle={styles.deleteMenuItem}
-                              />
-                            </Menu>
-                          </View>
-                          <View style={styles.movimientoMedioPago}>
-                            <MaterialCommunityIcons
-                              name={getMedioPagoIcon(movimiento.medioPago.tipo) as any}
-                              size={16}
-                              color="#666666"
-                            />
-                            <Text variant="bodySmall" style={styles.movimientoMedioPagoText}>
-                              {movimiento.medioPago.nombre}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    </Card.Content>
-                  </Card>
-                </TouchableOpacity>
+                  onEdit={handleEditarMovimiento}
+                  onDelete={handleEliminarMovimiento}
+                  menuVisible={menuVisible === movimiento.id}
+                  onMenuOpen={() => setMenuVisible(movimiento.id)}
+                  onMenuClose={() => setMenuVisible(null)}
+                  showMenu={true}
+                />
               );
             })}
           </View>
@@ -718,86 +606,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333333',
   },
-  movimientoCard: {
-    marginBottom: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    elevation: 1,
-  },
-  movimientoHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  movimientoLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  categoriaIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  movimientoInfo: {
-    flex: 1,
-  },
-  movimientoDescripcion: {
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 4,
-  },
-  movimientoMeta: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 2,
-    marginTop: 4,
-  },
-  movimientoCategoria: {
-    color: '#666666',
-  },
-  movimientoFecha: {
-    color: '#999999',
-  },
-  movimientoRight: {
-    alignItems: 'flex-end',
-  },
-  movimientoRightTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  menuButton: {
-    padding: 2,
-  },
   menuDropdownContent: {
     backgroundColor: '#FFFFFF',
-  },
-  deleteMenuItem: {
-    color: '#E74C3C',
-  },
-  movimientoMonto: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  movimientoMontoEgreso: {
-    color: '#E74C3C',
-  },
-  movimientoMontoIngreso: {
-    color: '#27AE60',
-  },
-  movimientoMedioPago: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  movimientoMedioPagoText: {
-    color: '#666666',
-    fontSize: 12,
   },
   fab: {
     position: 'absolute',

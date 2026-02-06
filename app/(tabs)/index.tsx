@@ -1,4 +1,5 @@
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
+import { GraficoTortaCategorias } from '@/components/grafico-torta-categorias';
 import { InfoInicialModal } from '@/components/info-inicial-modal';
 import { MovimientoModal } from '@/components/movimiento-modal';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
@@ -215,7 +216,13 @@ export default function HomeScreen() {
                       Ingresos
                     </Text>
                   </View>
-                  <Text variant="headlineSmall" style={styles.resumenCardAmount}>
+                  <Text
+                    variant="headlineSmall"
+                    style={styles.resumenCardAmount}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.5}
+                  >
                     {formatCurrency(reporteData.totalIngresos)}
                   </Text>
                 </Card.Content>
@@ -229,7 +236,13 @@ export default function HomeScreen() {
                       Egresos
                     </Text>
                   </View>
-                  <Text variant="headlineSmall" style={styles.resumenCardAmount}>
+                  <Text
+                    variant="headlineSmall"
+                    style={styles.resumenCardAmount}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.5}
+                  >
                     {formatCurrency(reporteData.totalEgresos)}
                   </Text>
                 </Card.Content>
@@ -318,7 +331,10 @@ export default function HomeScreen() {
               </Card>
             )}
 
-            {/* Top 5 Categorías */}
+            {reporteData.resumenPorCategoria && reporteData.resumenPorCategoria.length > 0 && (
+              <GraficoTortaCategorias data={reporteData.resumenPorCategoria} />
+            )}
+
             {reporteData.top5Categorias && reporteData.top5Categorias.length > 0 && (
               <Card style={styles.categoriasCard}>
                 <Card.Content>

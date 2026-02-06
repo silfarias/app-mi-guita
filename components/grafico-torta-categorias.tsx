@@ -1,6 +1,6 @@
 import { ResumenPorCategoria } from '@/features/reporte/interfaces/reporte.interface';
 import { PieChart } from 'react-native-chart-kit';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
 import { Card, Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -8,9 +8,10 @@ interface GraficoTortaCategoriasProps {
   data: ResumenPorCategoria[];
 }
 
-const screenWidth = Dimensions.get('window').width;
-const chartWidth = Math.min(screenWidth * 0.5, 180);
-const chartHeight = 160;
+const screenWidth = Dimensions.get("window").width;
+// Ancho fijo más pequeño para asegurar que quepa bien y se vea completo
+const chartWidth = 150;
+const chartHeight = 150;
 
 const chartConfig = {
   color: (opacity = 1) => `rgba(108, 180, 238, ${opacity})`,
@@ -33,41 +34,63 @@ export function GraficoTortaCategorias({ data }: GraficoTortaCategoriasProps) {
     color: item.categoria.color || '#6CB4EE',
     legendFontColor: '#666666',
     legendFontSize: 12,
+    percentage: item.porcentaje ? item.porcentaje.toFixed(0) : '0',
   }));
 
   return (
     <Card style={styles.card}>
       <Card.Content>
-        <View style={styles.header}>
-          <MaterialCommunityIcons name="chart-donut" size={24} color="#6CB4EE" />
-          <Text variant="titleMedium" style={styles.title}>
-            Distribución por categorías
-          </Text>
-        </View>
-        <View style={styles.chartWrapper}>
-          <View style={styles.chartContainer}>
-            <PieChart
-              data={pieData}
-              width={chartWidth}
-              height={chartHeight}
-              chartConfig={chartConfig}
-              accessor="population"
-              backgroundColor="transparent"
-              paddingLeft="0"
-              hasLegend={false}
-              absolute={false}
-              avoidFalseZero
-            />
+        <View style={styles.contentWrapper}>
+          <View style={styles.header}>
+            <MaterialCommunityIcons name="chart-donut" size={24} color="#6CB4EE" />
+            <Text variant="titleMedium" style={styles.title}>
+              Distribución por categorías
+            </Text>
           </View>
-          <View style={styles.legendContainer}>
-            {pieData.map((item, index) => (
-              <View key={index} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                <Text variant="bodySmall" style={styles.legendLabel}>
-                  {item.name}
-                </Text>
-              </View>
-            ))}
+          <View style={styles.chartWrapper}>
+            {/* Gráfico de torta a la izquierda */}
+            <View style={styles.chartContainer}>
+              <PieChart
+                data={pieData}
+                width={chartWidth}
+                height={chartHeight}
+                chartConfig={chartConfig}
+                accessor="population"
+                backgroundColor="transparent"
+                paddingLeft="30"
+                hasLegend={false}
+                absolute={true}
+                avoidFalseZero
+              />
+            </View>
+            
+            {/* Leyenda a la derecha con porcentajes */}
+            <View style={styles.legendContainer}>
+              <ScrollView 
+                style={styles.legendScrollContainer}
+                contentContainerStyle={styles.legendContentContainer}
+                showsVerticalScrollIndicator={false}
+              >
+                {pieData.map((item, index) => (
+                  <View key={index} style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                    <View style={styles.legendTextContainer}>
+                      <Text variant="bodySmall" style={styles.legendPercentage}>
+                        {item.percentage}%
+                      </Text>
+                      <Text 
+                        variant="bodySmall" 
+                        style={styles.legendLabel}
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                      >
+                        {item.name}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
           </View>
         </View>
       </Card.Content>
@@ -80,47 +103,74 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    elevation: 2,
+    elevation: 0,
+    overflow: 'visible',
+  },
+  contentWrapper: {
+    padding: 0
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
+    marginBottom: 16,
+    gap: 8
   },
   title: {
     fontWeight: '600',
     color: '#333333',
   },
   chartWrapper: {
-    flexDirection: 'column',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center'
   },
   chartContainer: {
+    width: '50%',
+    height: chartHeight,
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'center',
+    overflow: 'visible'
   },
   legendContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
+    flex: 1,
+    minWidth: 0,
+    marginLeft: -15,
+  },
+  legendScrollContainer: {
+    maxHeight: chartHeight,
+  },
+  legendContentContainer: {
+    paddingRight: 4,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    width: '48%',
-    gap: 6,
+    marginBottom: 5,
+    gap: 5
   },
   legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     marginTop: 4,
+    flexShrink: 0,
+  },
+  legendTextContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 5
+  },
+  legendPercentage: {
+    color: '#333333',
+    fontWeight: '600',
+    fontSize: 13,
+    marginBottom: 2,
   },
   legendLabel: {
     color: '#666666',
-    flex: 1,
-    flexShrink: 1,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

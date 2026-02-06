@@ -77,6 +77,18 @@ export default function InfoInicialMesScreen() {
         router.push('/consultas-historicas' as any);
       },
     },
+    // {
+    //   icon: 'receipt-text',
+    //   label: 'Gastos Fijos',
+    //   onPress: () => {
+    //     closeMenu();
+    //     router.push('/gastos-fijos' as any);
+    //   },
+    //   disabled: loadingGastosFijos,
+    //   loading: loadingGastosFijos,
+    //   textColor: '#6CB4EE',
+    //   iconColor: '#6CB4EE',
+    // },
     {
       icon: 'logout',
       label: logoutLoading ? 'Cerrando sesión...' : 'Cerrar sesión',

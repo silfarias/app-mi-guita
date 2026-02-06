@@ -1,6 +1,7 @@
 import { BalanceCard } from '@/components/balance-card';
 import { ComparacionMesAnterior } from '@/components/comparacion-mes-anterior';
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
+import { GastoFijoModal } from '@/components/gasto-fijo-modal';
 import { GraficoTortaCategorias } from '@/components/grafico-torta-categorias';
 import { InfoInicialModal } from '@/components/info-inicial-modal';
 import { MovimientoCard } from '@/components/movimiento-card';
@@ -10,6 +11,7 @@ import { SaldosPorMedioPago } from '@/components/saldos-por-medio-pago';
 import { SideMenu, SideMenuItem } from '@/components/side-menu';
 import { Top5Categorias } from '@/components/top5-categorias';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
+import { useMisGastosFijos } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { useDeleteMovimiento, useMovimientosPorInfo } from '@/features/movimiento/hooks/movimiento.hook';
 import { useReporteMensual } from '@/features/reporte/hooks/reporte.hook';
@@ -28,6 +30,7 @@ export default function HomeScreen() {
   const [isMovimientoModalVisible, setIsMovimientoModalVisible] = useState(false);
   const [isConfirmacionModalVisible, setIsConfirmacionModalVisible] = useState(false);
   const [isInfoInicialModalVisible, setIsInfoInicialModalVisible] = useState(false);
+  const [isGastoFijoModalVisible, setIsGastoFijoModalVisible] = useState(false);
   const [movimientoSeleccionado, setMovimientoSeleccionado] = useState<number | null>(null);
   const [menuVisible, setMenuVisible] = useState<number | null>(null);
   const [movimientosExpandidos, setMovimientosExpandidos] = useState<Set<number>>(new Set());
@@ -39,6 +42,7 @@ export default function HomeScreen() {
   const { data: reporteData, loading: reporteLoading, error: reporteError, fetchReporteMensual } = useReporteMensual();
   const { deleteMovimiento, loading: deleting } = useDeleteMovimiento();
   const { data: infoIniciales, loading: loadingInfoInicial, fetch: fetchInfoIniciales } = useInfoInicialPorUsuario();
+  const { data: gastosFijosData, loading: loadingGastosFijos, fetchMisGastosFijos } = useMisGastosFijos();
 
   const currentMonth = getCurrentMonth();
   const currentYear = getCurrentYear();
@@ -48,6 +52,7 @@ export default function HomeScreen() {
     fetchMovimientos();
     fetchReporteMensual({ anio: currentYear, mes: currentMonth });
     fetchInfoIniciales();
+    fetchMisGastosFijos();
   }, []);
 
   // Verificar si hay info inicial para el mes actual
@@ -55,6 +60,9 @@ export default function HomeScreen() {
     (info) => info.mes === currentMonth && info.anio === currentYear
   );
   const tieneInfoInicial = !!infoInicialDelMes;
+  
+  // Verificar si tiene gastos fijos
+  const tieneGastosFijos = gastosFijosData?.gastosFijos && gastosFijosData.gastosFijos.length > 0;
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -82,6 +90,18 @@ export default function HomeScreen() {
       },
     },
     {
+      icon: 'receipt-text',
+      label: 'Gastos Fijos',
+      onPress: () => {
+        closeMenu();
+        router.push('/gastos-fijos' as any);
+      },
+      disabled: loadingGastosFijos,
+      loading: loadingGastosFijos,
+      textColor: '#6CB4EE',
+      iconColor: '#6CB4EE',
+    },
+    {
       icon: 'logout',
       label: logoutLoading ? 'Cerrando sesión...' : 'Cerrar sesión',
       onPress: () => {
@@ -93,6 +113,7 @@ export default function HomeScreen() {
       textColor: '#D32F2F',
       iconColor: '#D32F2F',
     },
+    
   ];
 
   // Obtener movimientos del mes actual (últimos 5)
@@ -182,42 +203,33 @@ export default function HomeScreen() {
           <RefreshControl refreshing={isLoading} onRefresh={handleRefresh} />
         }
       >
-        {/* Dashboard - Resumen Principal */}
-        {tieneInfoInicial && reporteData && (
-          <>
-            {/* Cards de Resumen */}
-            <ResumenCards
-              totalIngresos={reporteData.totalIngresos}
-              totalEgresos={reporteData.totalEgresos}
-            />
-
-            {/* Balance Total */}
-            <BalanceCard balanceTotal={reporteData.balanceTotal} balanceMes={reporteData.balance} />
-
-            {/* Comparación con Mes Anterior */}
-            {reporteData.comparacionMesAnterior && (
-              <ComparacionMesAnterior comparacion={reporteData.comparacionMesAnterior} />
-            )}
-
-            {/* Gráfico de Torta */}
-            {reporteData.resumenPorCategoria && reporteData.resumenPorCategoria.length > 0 && (
-              <GraficoTortaCategorias data={reporteData.resumenPorCategoria} />
-            )}
-
-            {/* Top 5 Categorías */}
-            {reporteData.top5Categorias && reporteData.top5Categorias.length > 0 && (
-              <Top5Categorias categorias={reporteData.top5Categorias} />
-            )}
-
-            {/* Saldos por Medio de Pago */}
-            {reporteData.saldosPorMedioPago && reporteData.saldosPorMedioPago.length > 0 && (
-              <SaldosPorMedioPago saldos={reporteData.saldosPorMedioPago} showDetails={true} />
-            )}
-          </>
-        )}
-
-        {/* Botón crear movimiento o crear info inicial */}
-        {!tieneInfoInicial ? (
+        {/* Onboarding: Verificar si es usuario nuevo */}
+        {!tieneGastosFijos ? (
+          <Card style={styles.infoInicialCard}>
+            <Card.Content>
+              <View style={styles.infoInicialContent}>
+                <MaterialCommunityIcons name="receipt-outline" size={48} color="#6CB4EE" />
+                <Text variant="titleMedium" style={styles.infoInicialTitle}>
+                  ¡Bienvenido a MiGuita!
+                </Text>
+                <Text variant="bodyMedium" style={styles.infoInicialText}>
+                  Para comenzar, primero registra tus gastos fijos. Estos son pagos recurrentes que realizas cada mes (ej: alquiler, servicios, suscripciones).
+                </Text>
+                <Button
+                  mode="contained"
+                  onPress={() => setIsGastoFijoModalVisible(true)}
+                  style={styles.infoInicialButton}
+                  contentStyle={styles.infoInicialButtonContent}
+                  labelStyle={styles.infoInicialButtonLabel}
+                  icon="receipt"
+                  buttonColor="#6CB4EE"
+                >
+                  Registrar Gastos Fijos
+                </Button>
+              </View>
+            </Card.Content>
+          </Card>
+        ) : !tieneInfoInicial ? (
           <Card style={styles.infoInicialCard}>
             <Card.Content>
               <View style={styles.infoInicialContent}>
@@ -226,7 +238,7 @@ export default function HomeScreen() {
                   Configura tu mes
                 </Text>
                 <Text variant="bodyMedium" style={styles.infoInicialText}>
-                  Para comenzar a registrar movimientos, primero debes configurar la información inicial del mes
+                  Ahora registra con cuánto dinero iniciaste este mes. Esta información te ayudará a llevar un mejor control de tus finanzas.
                 </Text>
                 <Button
                   mode="contained"
@@ -243,17 +255,56 @@ export default function HomeScreen() {
             </Card.Content>
           </Card>
         ) : (
-          <Button
-            mode="contained"
-            onPress={() => setIsMovimientoModalVisible(true)}
-            style={styles.createButton}
-            contentStyle={styles.createButtonContent}
-            labelStyle={styles.createButtonLabel}
-            icon="plus-circle"
-          >
-            Crear Movimiento
-          </Button>
+          <>
+            {/* Dashboard - Resumen Principal */}
+            {reporteData && (
+              <>
+                {/* Cards de Resumen */}
+                <ResumenCards
+                  totalIngresos={reporteData.totalIngresos}
+                  totalEgresos={reporteData.totalEgresos}
+                />
+
+                {/* Balance Total */}
+                <BalanceCard balanceTotal={reporteData.balanceTotal} balanceMes={reporteData.balance} />
+
+                {/* Comparación con Mes Anterior */}
+                {reporteData.comparacionMesAnterior && (
+                  <ComparacionMesAnterior comparacion={reporteData.comparacionMesAnterior} />
+                )}
+
+                {/* Gráfico de Torta */}
+                {reporteData.resumenPorCategoria && reporteData.resumenPorCategoria.length > 0 && (
+                  <GraficoTortaCategorias data={reporteData.resumenPorCategoria} />
+                )}
+
+                {/* Top 5 Categorías */}
+                {reporteData.top5Categorias && reporteData.top5Categorias.length > 0 && (
+                  <Top5Categorias categorias={reporteData.top5Categorias} />
+                )}
+
+                {/* Saldos por Medio de Pago */}
+                {reporteData.saldosPorMedioPago && reporteData.saldosPorMedioPago.length > 0 && (
+                  <SaldosPorMedioPago saldos={reporteData.saldosPorMedioPago} showDetails={true} />
+                )}
+              </>
+            )}
+
+            {/* Botón crear movimiento */}
+            <Button
+              mode="contained"
+              onPress={() => setIsMovimientoModalVisible(true)}
+              style={styles.createButton}
+              contentStyle={styles.createButtonContent}
+              labelStyle={styles.createButtonLabel}
+              icon="plus-circle"
+            >
+              Crear Movimiento
+            </Button>
+          </>
         )}
+
+
 
         {/* Últimos Movimientos (máximo 5) - Solo si hay info inicial */}
         {tieneInfoInicial && (
@@ -267,73 +318,73 @@ export default function HomeScreen() {
               </View>
             ) : movimientosError || reporteError ? (
               <Card style={styles.errorCard}>
-            <Card.Content>
-              <View style={styles.errorContent}>
-                <MaterialCommunityIcons name="alert-circle" size={48} color="#D32F2F" />
-                <Text variant="bodyLarge" style={styles.errorText}>
-                  {movimientosError || reporteError}
-                </Text>
-                <Button
-                  mode="outlined"
-                  onPress={handleRefresh}
-                  style={styles.retryButton}
-                >
-                  Reintentar
-                </Button>
-              </View>
-            </Card.Content>
+                <Card.Content>
+                  <View style={styles.errorContent}>
+                    <MaterialCommunityIcons name="alert-circle" size={48} color="#D32F2F" />
+                    <Text variant="bodyLarge" style={styles.errorText}>
+                      {movimientosError || reporteError}
+                    </Text>
+                    <Button
+                      mode="outlined"
+                      onPress={handleRefresh}
+                      style={styles.retryButton}
+                    >
+                      Reintentar
+                    </Button>
+                  </View>
+                </Card.Content>
               </Card>
             ) : ultimosMovimientos.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Card.Content>
-              <View style={styles.emptyContent}>
-                <MaterialCommunityIcons name="wallet-outline" size={64} color="#999999" />
-                <Text variant="titleMedium" style={styles.emptyTitle}>
-                  No hay movimientos
-                </Text>
-                <Text variant="bodyMedium" style={styles.emptyText}>
-                  Comienza registrando tu primer movimiento del mes
-                </Text>
-              </View>
-            </Card.Content>
-          </Card>
-        ) : (
-          <View style={styles.movimientosContainer}>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="clock-outline" size={24} color="#6CB4EE" />
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                Últimos Movimientos
-              </Text>
-              {movimientosDelMes.length > 5 && (
-                <TouchableOpacity
-                  onPress={() => router.push('/(tabs)/explore' as any)}
-                  style={styles.verTodosButton}
-                >
-                  <Text variant="bodySmall" style={styles.verTodosText}>
-                    Ver todos ({movimientosDelMes.length})
+              <Card style={styles.emptyCard}>
+                <Card.Content>
+                  <View style={styles.emptyContent}>
+                    <MaterialCommunityIcons name="wallet-outline" size={64} color="#999999" />
+                    <Text variant="titleMedium" style={styles.emptyTitle}>
+                      No hay movimientos
+                    </Text>
+                    <Text variant="bodyMedium" style={styles.emptyText}>
+                      Comienza registrando tu primer movimiento del mes
+                    </Text>
+                  </View>
+                </Card.Content>
+              </Card>
+            ) : (
+              <View style={styles.movimientosContainer}>
+                <View style={styles.sectionHeader}>
+                  <MaterialCommunityIcons name="clock-outline" size={24} color="#6CB4EE" />
+                  <Text variant="titleMedium" style={styles.sectionTitle}>
+                    Últimos Movimientos
                   </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            {ultimosMovimientos.map((movimiento) => {
-              const isExpanded = movimientosExpandidos.has(movimiento.id);
-              return (
-                <MovimientoCard
-                  key={movimiento.id}
-                  movimiento={movimiento}
-                  isExpanded={isExpanded}
-                  onPress={() => toggleMovimientoExpandido(movimiento.id)}
-                  onEdit={handleEditarMovimiento}
-                  onDelete={handleEliminarMovimiento}
-                  menuVisible={menuVisible === movimiento.id}
-                  onMenuOpen={() => setMenuVisible(movimiento.id)}
-                  onMenuClose={() => setMenuVisible(null)}
-                  showMenu={true}
-                />
-              );
-            })}
-          </View>
-        )}
+                  {movimientosDelMes.length > 5 && (
+                    <TouchableOpacity
+                      onPress={() => router.push('/(tabs)/explore' as any)}
+                      style={styles.verTodosButton}
+                    >
+                      <Text variant="bodySmall" style={styles.verTodosText}>
+                        Ver todos ({movimientosDelMes.length})
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {ultimosMovimientos.map((movimiento) => {
+                  const isExpanded = movimientosExpandidos.has(movimiento.id);
+                  return (
+                    <MovimientoCard
+                      key={movimiento.id}
+                      movimiento={movimiento}
+                      isExpanded={isExpanded}
+                      onPress={() => toggleMovimientoExpandido(movimiento.id)}
+                      onEdit={handleEditarMovimiento}
+                      onDelete={handleEliminarMovimiento}
+                      menuVisible={menuVisible === movimiento.id}
+                      onMenuOpen={() => setMenuVisible(movimiento.id)}
+                      onMenuClose={() => setMenuVisible(null)}
+                      showMenu={true}
+                    />
+                  );
+                })}
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -353,6 +404,15 @@ export default function HomeScreen() {
           fetchMovimientos();
           fetchReporteMensual({ anio: currentYear, mes: currentMonth });
           setMovimientoSeleccionado(null);
+        }}
+      />
+
+      {/* Modal de Crear Gastos Fijos */}
+      <GastoFijoModal
+        visible={isGastoFijoModalVisible}
+        onDismiss={() => setIsGastoFijoModalVisible(false)}
+        onSuccess={() => {
+          fetchMisGastosFijos();
         }}
       />
 

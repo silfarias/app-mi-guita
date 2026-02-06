@@ -5,6 +5,12 @@ export interface SearchMetadata {
   totalPages: number;
 }
 
+export interface SearchRequest {
+  sortBy: string;
+  pageSize: number;
+  pageNumber: number;
+}
+
 export interface SearchResponse<T> {
   data: T[];
   metadata: SearchMetadata;

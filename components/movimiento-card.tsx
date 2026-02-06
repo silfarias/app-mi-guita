@@ -195,6 +195,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    minWidth: 48,
+    minHeight: 48,
   },
   movimientoInfo: {
     flex: 1,

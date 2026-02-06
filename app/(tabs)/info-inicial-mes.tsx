@@ -156,6 +156,14 @@ export default function InfoInicialMesScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* Texto explicativo */}
+            <View style={styles.explanationContainer}>
+              <MaterialCommunityIcons name="information" size={20} color="#6CB4EE" />
+              <Text variant="bodyMedium" style={styles.explanationText}>
+                Esta es la cantidad de dinero con la que iniciaste este mes
+              </Text>
+            </View>
+
             {/* Card de Monto Total */}
             <View style={styles.totalCard}>
               <View style={styles.totalCardHeader}>
@@ -328,12 +336,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   monthHeader: {
-    marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   monthHeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   monthHeaderText: {
     flex: 1,
@@ -345,6 +357,20 @@ const styles = StyleSheet.create({
   yearText: {
     color: '#666666',
     marginTop: 2,
+  },
+  explanationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#E3F2FD',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  explanationText: {
+    flex: 1,
+    color: '#666666',
+    lineHeight: 20,
   },
   totalCard: {
     backgroundColor: '#6CB4EE',

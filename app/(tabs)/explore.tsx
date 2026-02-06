@@ -3,6 +3,7 @@ import { ConfirmacionModal } from '@/components/confirmacion-modal';
 import { MedioPagoModal } from '@/components/medio-pago-modal';
 import { MovimientoCard } from '@/components/movimiento-card';
 import { MovimientoModal } from '@/components/movimiento-modal';
+import { PaginationBar } from '@/components/pagination-bar';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
@@ -11,7 +12,7 @@ import { MovimientoFiltros, TipoMovimientoEnum } from '@/features/movimiento/int
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { Button, Card, FAB, Menu, Text } from 'react-native-paper';
+import { Button, Card, DataTable, FAB, Menu, Text } from 'react-native-paper';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,11 +23,13 @@ export default function ExploreScreen() {
   const [menuVisible, setMenuVisible] = useState<number | null>(null);
   const [movimientosExpandidos, setMovimientosExpandidos] = useState<Set<number>>(new Set());
   const [filtrosExpandidos, setFiltrosExpandidos] = useState(false);
-  const [filtrosTemporales, setFiltrosTemporales] = useState<MovimientoFiltros>({});
+  const [filtrosTemporales, setFiltrosTemporales] = useState<Partial<MovimientoFiltros>>({});
   const [isCategoriaModalVisible, setIsCategoriaModalVisible] = useState(false);
   const [isMedioPagoModalVisible, setIsMedioPagoModalVisible] = useState(false);
   const [tipoMovimientoMenuVisible, setTipoMovimientoMenuVisible] = useState(false);
   const [mesMenuVisible, setMesMenuVisible] = useState(false);
+  const [page, setPage] = useState(0); // 0-indexed para el componente DataTable
+  const [pageSize, setPageSize] = useState(10);
   const insets = useSafeAreaInsets();
 
   const { data: movimientosData, loading: movimientosLoading, error: movimientosError, aplicarFiltros, limpiarFiltros, filtros } = useMovimientosConFiltros();
@@ -38,11 +41,52 @@ export default function ExploreScreen() {
   // Cargar info iniciales y movimientos al montar el componente
   useEffect(() => {
     fetchInfoIniciales();
-    aplicarFiltros({});
+    aplicarFiltros({
+      pageNumber: 1,
+      pageSize: pageSize,
+      sortBy: 'fecha',
+    } as MovimientoFiltros);
   }, []);
 
-  // Obtener movimientos
+  // Resetear a página 1 cuando cambia el tamaño de página
+  useEffect(() => {
+    if (filtros && pageSize) {
+      aplicarFiltros({
+        ...filtros,
+        pageNumber: 1,
+        pageSize: pageSize,
+        sortBy: filtros.sortBy || 'fecha',
+      } as MovimientoFiltros);
+      setPage(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSize]);
+
+  // Obtener movimientos y metadatos
   const movimientosDelMes = movimientosData?.data?.[0]?.movimientos || [];
+  const metadata = movimientosData?.metadata;
+
+  // Determinar el total de movimientos:
+  // 1. Si metadata.count existe y es mayor que 0, usar ese (es el valor correcto del backend)
+  // 2. Si no, usar la cantidad de movimientos devueltos
+  // Si el backend devuelve todos los registros aunque se solicite paginación,
+  // pero metadata.count tiene el valor correcto, usamos metadata.count
+  const totalMovimientosDelBackend = metadata?.count && metadata.count > 0 ? metadata.count : movimientosDelMes.length;
+  const totalMovimientos = totalMovimientosDelBackend;
+
+  // Calcular totalPages basado en el totalMovimientos y pageSize
+  // Si el backend proporciona totalPages y es mayor que 0, usarlo; sino calcularlo
+  const totalPagesCalculado = Math.max(1, Math.ceil(totalMovimientos / pageSize));
+  const totalPages = metadata?.totalPages && metadata.totalPages > 0 ? metadata.totalPages : totalPagesCalculado;
+  const currentPageNumber = metadata?.pageNumber || 1;
+
+  // Sincronizar el estado de página con los metadatos del servidor
+  useEffect(() => {
+    if (currentPageNumber > 0 && page !== currentPageNumber - 1) {
+      setPage(currentPageNumber - 1); // Convertir de 1-indexed a 0-indexed
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPageNumber]);
 
 
   const handleEditarMovimiento = (movimientoId: number) => {
@@ -70,7 +114,17 @@ export default function ExploreScreen() {
         });
         setIsConfirmacionModalVisible(false);
         setMovimientoSeleccionado(null);
-        aplicarFiltros(filtros || {});
+        const filtrosActuales: MovimientoFiltros = filtros || {
+          pageNumber: 1,
+          pageSize: pageSize,
+          sortBy: 'fecha',
+        };
+        aplicarFiltros({
+          ...filtrosActuales,
+          pageNumber: filtrosActuales.pageNumber || 1,
+          pageSize: pageSize,
+          sortBy: filtrosActuales.sortBy || 'fecha',
+        });
       } catch (error) {
         // El error ya se maneja en el hook
       }
@@ -90,28 +144,71 @@ export default function ExploreScreen() {
   };
 
   const handleAplicarFiltros = () => {
-    const filtrosLimpios: MovimientoFiltros = {};
-    if (filtrosTemporales.infoInicialId) filtrosLimpios.infoInicialId = filtrosTemporales.infoInicialId;
-    if (filtrosTemporales.tipoMovimiento) filtrosLimpios.tipoMovimiento = filtrosTemporales.tipoMovimiento;
-    if (filtrosTemporales.categoriaId) filtrosLimpios.categoriaId = filtrosTemporales.categoriaId;
-    if (filtrosTemporales.medioPagoId) filtrosLimpios.medioPagoId = filtrosTemporales.medioPagoId;
-    if (filtrosTemporales.fechaDesde) filtrosLimpios.fechaDesde = filtrosTemporales.fechaDesde;
-    if (filtrosTemporales.fechaHasta) filtrosLimpios.fechaHasta = filtrosTemporales.fechaHasta;
+    const filtrosLimpios: MovimientoFiltros = {
+      pageNumber: 1,
+      pageSize: pageSize,
+      sortBy: 'fecha',
+      infoInicialId: filtrosTemporales.infoInicialId,
+      tipoMovimiento: filtrosTemporales.tipoMovimiento,
+      categoriaId: filtrosTemporales.categoriaId,
+      medioPagoId: filtrosTemporales.medioPagoId,
+      fechaDesde: filtrosTemporales.fechaDesde,
+      fechaHasta: filtrosTemporales.fechaHasta,
+    };
     aplicarFiltros(filtrosLimpios);
     setFiltrosExpandidos(false);
+    setPage(0); // Resetear a la primera página cuando se aplican filtros
   };
 
   const handleLimpiarFiltros = () => {
+    // Limpiar solo los filtros temporales (sin paginación)
     setFiltrosTemporales({});
-    limpiarFiltros();
+    // Aplicar filtros limpios con paginación reseteada
+    aplicarFiltros({
+      pageNumber: 1,
+      pageSize: pageSize,
+      sortBy: 'fecha',
+    } as MovimientoFiltros);
     setFiltrosExpandidos(false);
+    setPage(0); // Resetear a la primera página cuando se limpian filtros
   };
 
-  const categoriaSeleccionada = categorias?.find((c) => c.id === filtrosTemporales.categoriaId);
-  const medioPagoSeleccionado = mediosPago?.find((m) => m.id === filtrosTemporales.medioPagoId);
-  const infoInicialSeleccionada = infoIniciales?.find((info) => info.id === filtrosTemporales.infoInicialId);
+  // Manejar cambio de página
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    if (filtros) {
+      aplicarFiltros({
+        ...filtros,
+        pageNumber: newPage + 1, // Convertir de 0-indexed a 1-indexed para el backend
+        pageSize: pageSize,
+        sortBy: filtros.sortBy || 'fecha',
+      });
+    }
+  };
 
-  const tieneFiltrosActivos = filtros && Object.keys(filtros).length > 0;
+  // Manejar cambio de tamaño de página
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+  };
+
+  // Usar filtros aplicados si existen, sino usar filtros temporales (para mostrar la selección antes de aplicar)
+  const categoriaIdParaMostrar = filtros?.categoriaId ?? filtrosTemporales.categoriaId;
+  const medioPagoIdParaMostrar = filtros?.medioPagoId ?? filtrosTemporales.medioPagoId;
+  const infoInicialIdParaMostrar = filtros?.infoInicialId ?? filtrosTemporales.infoInicialId;
+
+  const categoriaSeleccionada = categorias?.find((c) => c.id === categoriaIdParaMostrar);
+  const medioPagoSeleccionado = mediosPago?.find((m) => m.id === medioPagoIdParaMostrar);
+  const infoInicialSeleccionada = infoIniciales?.find((info) => info.id === infoInicialIdParaMostrar);
+
+  // Verificar si hay filtros activos (excluyendo paginación y ordenamiento)
+  const tieneFiltrosActivos =
+    filtros &&
+    (filtros.infoInicialId !== undefined ||
+      filtros.tipoMovimiento !== undefined ||
+      filtros.categoriaId !== undefined ||
+      filtros.medioPagoId !== undefined ||
+      filtros.fechaDesde !== undefined ||
+      filtros.fechaHasta !== undefined);
 
   // Formatear mes para mostrar en el selector
   const formatMesSelector = (mes: string, anio: number) => {
@@ -153,7 +250,17 @@ export default function ExploreScreen() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         refreshControl={
-          <RefreshControl refreshing={movimientosLoading} onRefresh={() => aplicarFiltros(filtros || {})} />
+          <RefreshControl
+            refreshing={movimientosLoading}
+            onRefresh={() => {
+              const filtrosActuales: MovimientoFiltros = filtros || {
+                pageNumber: 1,
+                pageSize: pageSize,
+                sortBy: 'fecha',
+              };
+              aplicarFiltros(filtrosActuales);
+            }}
+          />
         }
       >
         {/* Formulario de Filtros */}
@@ -224,8 +331,8 @@ export default function ExploreScreen() {
                         {filtrosTemporales.tipoMovimiento === TipoMovimientoEnum.INGRESO
                           ? 'Ingreso'
                           : filtrosTemporales.tipoMovimiento === TipoMovimientoEnum.EGRESO
-                          ? 'Egreso'
-                          : '--'}
+                            ? 'Egreso'
+                            : '--'}
                       </Text>
                       <MaterialCommunityIcons name="chevron-down" size={20} color="#666666" />
                     </TouchableOpacity>
@@ -328,7 +435,14 @@ export default function ExploreScreen() {
                   {movimientosError}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => aplicarFiltros(filtros || {})}
+                  onPress={() => {
+                    const filtrosActuales: MovimientoFiltros = filtros || {
+                      pageNumber: 1,
+                      pageSize: pageSize,
+                      sortBy: 'fecha',
+                    };
+                    aplicarFiltros(filtrosActuales);
+                  }}
                   style={styles.retryButton}
                 >
                   <Text variant="bodyMedium" style={styles.retryButtonText}>
@@ -355,28 +469,41 @@ export default function ExploreScreen() {
             </Card.Content>
           </Card>
         ) : (
-          <View style={styles.movimientosContainer}>
-            <Text variant="titleMedium" style={styles.sectionTitle}>
-              Movimientos ({movimientosDelMes.length})
-            </Text>
-            {movimientosDelMes.map((movimiento) => {
-              const isExpanded = movimientosExpandidos.has(movimiento.id);
-              return (
-                <MovimientoCard
-                  key={movimiento.id}
-                  movimiento={movimiento}
-                  isExpanded={isExpanded}
-                  onPress={() => toggleMovimientoExpandido(movimiento.id)}
-                  onEdit={handleEditarMovimiento}
-                  onDelete={handleEliminarMovimiento}
-                  menuVisible={menuVisible === movimiento.id}
-                  onMenuOpen={() => setMenuVisible(movimiento.id)}
-                  onMenuClose={() => setMenuVisible(null)}
-                  showMenu={true}
-                />
-              );
-            })}
-          </View>
+          <>
+            <View style={styles.movimientosContainer}>
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                Movimientos ({totalMovimientos})
+              </Text>
+              {movimientosDelMes.map((movimiento) => {
+                const isExpanded = movimientosExpandidos.has(movimiento.id);
+                return (
+                  <MovimientoCard
+                    key={movimiento.id}
+                    movimiento={movimiento}
+                    isExpanded={isExpanded}
+                    onPress={() => toggleMovimientoExpandido(movimiento.id)}
+                    onEdit={handleEditarMovimiento}
+                    onDelete={handleEliminarMovimiento}
+                    menuVisible={menuVisible === movimiento.id}
+                    onMenuOpen={() => setMenuVisible(movimiento.id)}
+                    onMenuClose={() => setMenuVisible(null)}
+                    showMenu={true}
+                  />
+                );
+              })}
+            </View>
+
+            {/* Paginación */}
+            <PaginationBar
+              page={page}
+              totalPages={totalPages}
+              totalMovimientos={totalMovimientos}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              movimientosLength={movimientosDelMes.length}
+            />
+          </>
         )}
       </ScrollView>
 
@@ -419,7 +546,17 @@ export default function ExploreScreen() {
         }}
         movimientoId={movimientoSeleccionado}
         onSuccess={() => {
-          aplicarFiltros(filtros || {});
+          const filtrosActuales: MovimientoFiltros = filtros || {
+            pageNumber: 1,
+            pageSize: pageSize,
+            sortBy: 'fecha',
+          };
+          aplicarFiltros({
+            ...filtrosActuales,
+            pageNumber: filtrosActuales.pageNumber || 1,
+            pageSize: pageSize,
+            sortBy: filtrosActuales.sortBy || 'fecha',
+          });
           setMovimientoSeleccionado(null);
         }}
       />

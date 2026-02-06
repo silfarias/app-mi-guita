@@ -3,6 +3,7 @@ import { ComparacionMesAnterior } from '@/components/comparacion-mes-anterior';
 import { GraficoTortaCategorias } from '@/components/grafico-torta-categorias';
 import { MovimientoCard } from '@/components/movimiento-card';
 import { MovimientoModal } from '@/components/movimiento-modal';
+import { PaginationBar } from '@/components/pagination-bar';
 import { ResumenCards } from '@/components/resumen-cards';
 import { SaldosPorMedioPago } from '@/components/saldos-por-medio-pago';
 import { Top5Categorias } from '@/components/top5-categorias';
@@ -28,10 +29,12 @@ export default function ConsultasHistoricasScreen() {
   const [movimientoSeleccionado, setMovimientoSeleccionado] = useState<number | null>(null);
   const [menuVisible, setMenuVisible] = useState<number | null>(null);
   const [movimientosExpandidos, setMovimientosExpandidos] = useState<Set<number>>(new Set());
+  const [page, setPage] = useState(0); // 0-indexed para el componente DataTable
+  const [pageSize, setPageSize] = useState(10);
 
   const { data: infoIniciales, loading: loadingInfoInicial, fetch: fetchInfoIniciales } = useInfoInicialPorUsuario();
   const { data: reporteData, loading: reporteLoading, error: reporteError, fetchReporteMensual } = useReporteMensual();
-  const { data: movimientosData, loading: movimientosLoading, error: movimientosError, aplicarFiltros } = useMovimientosConFiltros();
+  const { data: movimientosData, loading: movimientosLoading, error: movimientosError, aplicarFiltros, filtros } = useMovimientosConFiltros();
 
   const meses = [
     'ENERO',
@@ -76,14 +79,35 @@ export default function ConsultasHistoricasScreen() {
       // Cargar reporte mensual
       fetchReporteMensual({ anio: anioSeleccionado, mes: mesSeleccionado });
       
-      // Cargar movimientos del mes
+      // Cargar movimientos del mes con paginación
       const { fechaDesde, fechaHasta } = getFechasDelMes(mesSeleccionado, anioSeleccionado);
       aplicarFiltros({
         fechaDesde,
         fechaHasta,
+        pageNumber: 1,
+        pageSize: pageSize,
+        sortBy: 'fecha',
       } as MovimientoFiltros);
+      setPage(0); // Resetear a la primera página cuando cambia el mes
     }
   }, [mesSeleccionado, anioSeleccionado]);
+
+  // Resetear a página 1 cuando cambia el tamaño de página
+  useEffect(() => {
+    if (filtros && pageSize && mesSeleccionado && anioSeleccionado) {
+      const { fechaDesde, fechaHasta } = getFechasDelMes(mesSeleccionado, anioSeleccionado);
+      aplicarFiltros({
+        ...filtros,
+        fechaDesde,
+        fechaHasta,
+        pageNumber: 1,
+        pageSize: pageSize,
+        sortBy: filtros.sortBy || 'fecha',
+      } as MovimientoFiltros);
+      setPage(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSize]);
 
   const handleRefresh = () => {
     fetchInfoIniciales();
@@ -93,8 +117,57 @@ export default function ConsultasHistoricasScreen() {
       aplicarFiltros({
         fechaDesde,
         fechaHasta,
+        pageNumber: 1,
+        pageSize: pageSize,
+        sortBy: 'fecha',
       } as MovimientoFiltros);
+      setPage(0);
     }
+  };
+
+  // Obtener movimientos y metadatos
+  const movimientosDelMes = movimientosData?.data?.[0]?.movimientos || [];
+  const metadata = movimientosData?.metadata;
+
+  // Determinar el total de movimientos:
+  // 1. Si metadata.count existe y es mayor que 0, usar ese (es el valor correcto del backend)
+  // 2. Si no, usar la cantidad de movimientos devueltos
+  const totalMovimientosDelBackend = metadata?.count && metadata.count > 0 ? metadata.count : movimientosDelMes.length;
+  const totalMovimientos = totalMovimientosDelBackend;
+
+  // Calcular totalPages basado en el totalMovimientos y pageSize
+  // Si el backend proporciona totalPages y es mayor que 0, usarlo; sino calcularlo
+  const totalPagesCalculado = Math.max(1, Math.ceil(totalMovimientos / pageSize));
+  const totalPages = metadata?.totalPages && metadata.totalPages > 0 ? metadata.totalPages : totalPagesCalculado;
+  const currentPageNumber = metadata?.pageNumber || 1;
+
+  // Sincronizar el estado de página con los metadatos del servidor
+  useEffect(() => {
+    if (currentPageNumber > 0 && page !== currentPageNumber - 1) {
+      setPage(currentPageNumber - 1); // Convertir de 1-indexed a 0-indexed
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPageNumber]);
+
+  // Manejar cambio de página
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    if (filtros && mesSeleccionado && anioSeleccionado) {
+      const { fechaDesde, fechaHasta } = getFechasDelMes(mesSeleccionado, anioSeleccionado);
+      aplicarFiltros({
+        ...filtros,
+        fechaDesde,
+        fechaHasta,
+        pageNumber: newPage + 1, // Convertir de 0-indexed a 1-indexed para el backend
+        pageSize: pageSize,
+        sortBy: filtros.sortBy || 'fecha',
+      });
+    }
+  };
+
+  // Manejar cambio de tamaño de página
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
   };
 
 
@@ -117,7 +190,6 @@ export default function ConsultasHistoricasScreen() {
   };
 
   const isLoading = reporteLoading || movimientosLoading || loadingInfoInicial;
-  const movimientosDelMes = movimientosData?.data?.[0]?.movimientos || [];
 
   return (
     <View style={styles.container}>
@@ -271,6 +343,17 @@ export default function ConsultasHistoricasScreen() {
                 />
               );
             })}
+
+            {/* Paginación */}
+            <PaginationBar
+              page={page}
+              totalPages={totalPages}
+              totalMovimientos={totalMovimientos}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+              movimientosLength={movimientosDelMes.length}
+            />
           </View>
         )}
       </ScrollView>

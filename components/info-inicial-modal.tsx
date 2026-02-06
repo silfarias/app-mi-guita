@@ -326,6 +326,14 @@ export function InfoInicialModal({
             </TouchableOpacity>
           </View>
 
+          {/* Texto explicativo */}
+          <View style={styles.explanationContainer}>
+            <MaterialCommunityIcons name="information" size={18} color="#6CB4EE" />
+            <Text variant="bodySmall" style={styles.explanationText}>
+              Esta es la cantidad de dinero con la que iniciaste este mes
+            </Text>
+          </View>
+
           {loadingInfo && isEditMode ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#6CB4EE" />
@@ -557,9 +565,26 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333333',
   },
+  explanationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#E3F2FD',
+    padding: 12,
+    marginHorizontal: 20,
+    marginBottom: 0,
+    marginTop: 8,
+    borderRadius: 8,
+  },
+  explanationText: {
+    flex: 1,
+    color: '#666666',
+    lineHeight: 18,
+  },
   modalScrollView: {
     maxHeight: 400,
     padding: 20,
+    marginTop: 0,
   },
   loadingContainer: {
     padding: 40,
@@ -572,7 +597,7 @@ const styles = StyleSheet.create({
   },
   modalSubtitle: {
     color: '#666666',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   modalSectionTitle: {
     fontWeight: '600',
@@ -630,7 +655,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formRow: {
-    marginBottom: 16,
+    marginBottom: 0,
   },
   formLabel: {
     marginBottom: 8,

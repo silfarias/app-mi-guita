@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { StyleProp, TextStyle, View } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
 
@@ -86,7 +86,8 @@ export function MoneyInputForm({
     const newDisplay = formatMoneyDisplay(finalValue);
     const commaPos = newDisplay.indexOf(',');
     const cursorPos = commaPos >= 0 ? commaPos : newDisplay.length;
-    setSelection({ start: cursorPos, end: cursorPos });
+    // Defer selection to next tick so it applies after the value update
+    setTimeout(() => setSelection({ start: cursorPos, end: cursorPos }), 0);
   };
 
   const handleBlur = () => {

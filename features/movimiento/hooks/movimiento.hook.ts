@@ -21,7 +21,7 @@ export function useMovimientoForm() {
     mode: 'onSubmit',
     defaultValues: {
       infoInicialId: 0,
-      fecha: '',
+      fecha: new Date().toISOString().split('T')[0],
       tipoMovimiento: TipoMovimientoEnum.EGRESO,
       descripcion: '',
       categoriaId: 0,

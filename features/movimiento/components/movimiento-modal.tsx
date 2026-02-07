@@ -136,6 +136,7 @@ export function MovimientoModal({
       fetchMediosPago();
       if (!isEditMode) {
         reset();
+        setValue('fecha', new Date().toISOString().split('T')[0]);
         setTipoMovimiento(TipoMovimientoEnum.EGRESO);
         setSelectedCategoria(null);
         setSelectedMedioPago(null);

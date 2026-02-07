@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import { useAuthStore } from '../../../store/auth.store';
-import { BulkGastoFijoRequest, GastoFijoRequest, GastoFijoResponse, UsuarioGastosFijosResponse } from '../interfaces/gasto-fijo.interface';
-import { GastoFijoService } from '../services/gasto-fijo.service';
 import { useAsyncRun } from '../../../hooks/use-async-run';
+import { useAuthStore } from '../../../store/auth.store';
+import { BulkGastoFijoRequest, GastoFijoRequest } from '../interfaces/gasto-fijo-request.interface';
+import { GastoFijoResponse } from '../interfaces/gasto-fijo.interface';
+import { GetMisGastosFijosResponse } from '../interfaces/get-mis-gastos-fijos.interface';
+import { GastoFijoService } from '../services/gasto-fijo.service';
 
 const gastoFijoService = new GastoFijoService();
 
-/**
- * Hook para crear un solo gasto fijo.
- * Maneja la creación de un gasto fijo y retorna el gasto fijo creado.
- */
+
 export function useCreateGastoFijo() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const { loading, error, setError, run } = useAsyncRun();
@@ -44,10 +43,6 @@ export function useCreateGastoFijo() {
   };
 }
 
-/**
- * Hook para crear gastos fijos en bulk.
- * Maneja la creación de múltiples gastos fijos y retorna los gastos fijos creados.
- */
 export function useCreateBulkGastoFijo() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const { loading, error, setError, run } = useAsyncRun();
@@ -82,14 +77,10 @@ export function useCreateBulkGastoFijo() {
   };
 }
 
-/**
- * Hook para obtener los gastos fijos del usuario actual.
- * Retorna los gastos fijos con sus pagos asociados.
- */
 export function useMisGastosFijos() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const { loading, error, setError, run } = useAsyncRun();
-  const [data, setData] = useState<UsuarioGastosFijosResponse | null>(null);
+  const [data, setData] = useState<GetMisGastosFijosResponse | null>(null);
 
   const fetchMisGastosFijos = async () => {
     if (!accessToken) {
@@ -108,6 +99,7 @@ export function useMisGastosFijos() {
 
   return {
     data,
+    gastosFijos: data?.gastosFijos ?? [],
     loading,
     error,
     fetchMisGastosFijos,

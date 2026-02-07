@@ -74,25 +74,25 @@ export default function InfoInicialMesScreen() {
         : require('../assets/images/icon.png'),
     },
     {
+      icon: 'home',
+      label: 'Inicio',
+      onPress: () => {
+        closeMenu();
+        router.replace('/(tabs)' as any);
+      },
+      textColor: '#6CB4EE',
+      iconColor: '#6CB4EE',
+    },
+    {
       icon: 'format-list-bulleted',
       label: 'Consultas Históricas',
       onPress: () => {
         closeMenu();
         router.push('/consultas-historicas' as any);
       },
+      textColor: '#6CB4EE',
+      iconColor: '#6CB4EE',
     },
-    // {
-    //   icon: 'receipt-text',
-    //   label: 'Gastos Fijos',
-    //   onPress: () => {
-    //     closeMenu();
-    //     router.push('/gastos-fijos' as any);
-    //   },
-    //   disabled: loadingGastosFijos,
-    //   loading: loadingGastosFijos,
-    //   textColor: '#6CB4EE',
-    //   iconColor: '#6CB4EE',
-    // },
     {
       icon: 'logout',
       label: logoutLoading ? 'Cerrando sesión...' : 'Cerrar sesión',

@@ -86,16 +86,6 @@ export default function HomeScreen() {
         : require('../../assets/images/icon.png'),
     },
     {
-      icon: 'format-list-bulleted',
-      label: 'Consultas Históricas',
-      onPress: () => {
-        closeMenu();
-        router.push('/consultas-historicas' as any);
-      },
-      textColor: '#6CB4EE',
-      iconColor: '#6CB4EE',
-    },
-    {
       icon: 'receipt-text',
       label: 'Informacion Inicial',
       onPress: () => {
@@ -104,6 +94,16 @@ export default function HomeScreen() {
       },
       disabled: loadingGastosFijos,
       loading: loadingGastosFijos,
+      textColor: '#6CB4EE',
+      iconColor: '#6CB4EE',
+    },
+    {
+      icon: 'format-list-bulleted',
+      label: 'Consultas Históricas',
+      onPress: () => {
+        closeMenu();
+        router.push('/consultas-historicas' as any);
+      },
       textColor: '#6CB4EE',
       iconColor: '#6CB4EE',
     },

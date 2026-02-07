@@ -4,8 +4,6 @@ import { ConfirmacionModal } from '@/components/confirmacion-modal';
 import { GastoFijoModal } from '@/components/gasto-fijo-modal';
 import { GraficoTortaCategorias } from '@/components/grafico-torta-categorias';
 import { InfoInicialModal } from '@/components/info-inicial-modal';
-import { MovimientoCard } from '@/components/movimiento-card';
-import { MovimientoModal } from '@/components/movimiento-modal';
 import { ResumenCards } from '@/components/resumen-cards';
 import { SaldosPorMedioPago } from '@/components/saldos-por-medio-pago';
 import { SideMenu, SideMenuItem } from '@/components/side-menu';
@@ -13,6 +11,8 @@ import { Top5Categorias } from '@/components/top5-categorias';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
 import { useMisGastosFijos } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
+import { MovimientoCard } from '@/features/movimiento/components/movimiento-card';
+import { MovimientoModal } from '@/features/movimiento/components/movimiento-modal';
 import { useDeleteMovimiento, useMovimientosPorInfo } from '@/features/movimiento/hooks/movimiento.hook';
 import { useReporteMensual } from '@/features/reporte/hooks/reporte.hook';
 import { useAuthStore } from '@/store/auth.store';
@@ -21,9 +21,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Card, IconButton, Menu, Text } from 'react-native-paper';
-import Toast from 'react-native-toast-message';
+import { Button, Card, IconButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 export default function HomeScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -37,6 +37,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   const user = useAuthStore((state) => state.usuario?.persona?.nombre || 'Usuario');
+  const usuarioFotoPerfil = useAuthStore((state) => state.usuario?.fotoPerfil);
   const { logout, loading: logoutLoading } = useLogout();
   const { data: movimientosData, loading: movimientosLoading, error: movimientosError, fetchMovimientos } = useMovimientosPorInfo();
   const { data: reporteData, loading: reporteLoading, error: reporteError, fetchReporteMensual } = useReporteMensual();
@@ -80,6 +81,9 @@ export default function HomeScreen() {
         closeMenu();
         router.push('/profile' as any);
       },
+      avatarSource: usuarioFotoPerfil?.trim()
+        ? { uri: usuarioFotoPerfil }
+        : require('../../assets/images/icon.png'),
     },
     {
       icon: 'format-list-bulleted',

@@ -1,20 +1,20 @@
 import { CategoriaModal } from '@/components/categoria-modal';
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
 import { MedioPagoModal } from '@/components/medio-pago-modal';
-import { MovimientoCard } from '@/components/movimiento-card';
-import { MovimientoModal } from '@/components/movimiento-modal';
 import { PaginationBar } from '@/components/pagination-bar';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
+import { MovimientoCard } from '@/features/movimiento/components/movimiento-card';
+import { MovimientoModal } from '@/features/movimiento/components/movimiento-modal';
 import { useDeleteMovimiento, useMovimientosConFiltros } from '@/features/movimiento/hooks/movimiento.hook';
 import { MovimientoFiltros, TipoMovimientoEnum } from '@/features/movimiento/interfaces/movimiento.interface';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { Button, Card, DataTable, FAB, Menu, Text } from 'react-native-paper';
-import Toast from 'react-native-toast-message';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Button, Card, FAB, Menu, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 export default function ExploreScreen() {
   const [isMovimientoModalVisible, setIsMovimientoModalVisible] = useState(false);
@@ -511,8 +511,8 @@ export default function ExploreScreen() {
       <CategoriaModal
         visible={isCategoriaModalVisible}
         onDismiss={() => setIsCategoriaModalVisible(false)}
-        onSelect={(categoriaId) => {
-          setFiltrosTemporales({ ...filtrosTemporales, categoriaId });
+        onSelect={(categoria) => {
+          setFiltrosTemporales({ ...filtrosTemporales, categoriaId: categoria.id });
           setIsCategoriaModalVisible(false);
         }}
         selectedValue={filtrosTemporales.categoriaId}
@@ -522,8 +522,8 @@ export default function ExploreScreen() {
       <MedioPagoModal
         visible={isMedioPagoModalVisible}
         onDismiss={() => setIsMedioPagoModalVisible(false)}
-        onSelect={(medioPagoId) => {
-          setFiltrosTemporales({ ...filtrosTemporales, medioPagoId });
+        onSelect={(medio) => {
+          setFiltrosTemporales({ ...filtrosTemporales, medioPagoId: medio.id });
           setIsMedioPagoModalVisible(false);
         }}
         selectedValue={filtrosTemporales.medioPagoId}

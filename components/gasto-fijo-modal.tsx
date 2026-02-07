@@ -1,10 +1,9 @@
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
 import { useCreateBulkGastoFijo } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
-import { GastoFijoRequest } from '@/features/gasto-fijo/interfaces/gasto-fijo.interface';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Button, Card, Menu, Text, TextInput } from 'react-native-paper';
+import { Button, Text, TextInput } from 'react-native-paper';
 import Toast from 'react-native-toast-message';
 import { CategoriaModal } from './categoria-modal';
 
@@ -25,7 +24,8 @@ export function GastoFijoModal({
   // Estado para guardar el texto sin formatear mientras el usuario escribe
   const [montoTextInputs, setMontoTextInputs] = useState<Record<string, string>>({});
   const [nombreInputs, setNombreInputs] = useState<Record<string, string>>({});
-  
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
+
   const { data: categorias, fetchCategorias } = useCategorias({ activo: true });
   const { createBulk, loading: creating, error: createError, reset } = useCreateBulkGastoFijo();
 
@@ -42,7 +42,16 @@ export function GastoFijoModal({
       setGastosFijosEdit([]);
       setMontoTextInputs({});
       setNombreInputs({});
+      setShowFieldErrors(false);
       reset();
+    }
+  }, [visible]);
+
+  // Al abrir el modal, mostrar ya un ítem para cargar el primer gasto fijo
+  useEffect(() => {
+    if (visible && gastosFijosEdit.length === 0) {
+      const tempId = `temp-${Date.now()}`;
+      setGastosFijosEdit([{ nombre: '', montoFijo: 0, categoriaId: null, tempId }]);
     }
   }, [visible]);
 
@@ -139,6 +148,7 @@ export function GastoFijoModal({
   };
 
   const handleNombreChange = (tempId: string | undefined, text: string) => {
+    setShowFieldErrors(false);
     const inputKey = getInputKey(tempId);
     setNombreInputs((prev) => ({
       ...prev,
@@ -156,14 +166,16 @@ export function GastoFijoModal({
   };
 
   const handleAgregarGastoFijo = () => {
+    setShowFieldErrors(false);
     const tempId = `temp-${Date.now()}`;
     setGastosFijosEdit((prev) => [{ nombre: '', montoFijo: 0, categoriaId: null, tempId }, ...prev]);
   };
 
-  const handleSeleccionarCategoria = (categoriaId: number) => {
+  const handleSeleccionarCategoria = (categoria: { id: number }) => {
+    setShowFieldErrors(false);
     if (categoriaModalTempId) {
       setGastosFijosEdit((prev) =>
-        prev.map((gf) => (gf.tempId === categoriaModalTempId ? { ...gf, categoriaId } : gf))
+        prev.map((gf) => (gf.tempId === categoriaModalTempId ? { ...gf, categoriaId: categoria.id } : gf))
       );
       setCategoriaModalTempId(null);
     }
@@ -199,25 +211,20 @@ export function GastoFijoModal({
   };
 
   const handleSave = async () => {
-    // Filtrar gastos fijos válidos (con nombre, categoriaId seleccionado y monto > 0)
+    // Gastos válidos: nombre y categoría; monto vacío se envía como 0
     const gastosFijosFiltrados = gastosFijosEdit
-      .filter((gf) => gf.nombre.trim() !== '' && gf.categoriaId !== null && gf.montoFijo > 0)
+      .filter((gf) => gf.nombre.trim() !== '' && gf.categoriaId !== null)
       .map((gf) => ({
         nombre: gf.nombre.trim(),
-        montoFijo: gf.montoFijo,
+        montoFijo: gf.montoFijo ?? 0,
         categoriaId: gf.categoriaId!,
       }));
-    
+
     if (gastosFijosFiltrados.length === 0) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Debes agregar al menos un gasto fijo con nombre, categoría y monto mayor a 0',
-        position: 'top',
-        visibilityTime: 3000,
-      });
+      setShowFieldErrors(true);
       return;
     }
+    setShowFieldErrors(false);
 
     try {
       await createBulk({ gastosFijos: gastosFijosFiltrados });
@@ -307,6 +314,9 @@ export function GastoFijoModal({
                       : null;
                     const tempId = gastoFijoEdit.tempId || `item-${index}`;
                     const inputKey = getInputKey(gastoFijoEdit.tempId);
+                    const nombreEffective = (nombreInputs[inputKey] ?? gastoFijoEdit.nombre).trim();
+                    const nombreError = showFieldErrors && nombreEffective === '';
+                    const categoriaError = showFieldErrors && gastoFijoEdit.categoriaId === null;
 
                     return (
                       <View key={tempId} style={styles.gastoFijoEditItem}>
@@ -331,7 +341,7 @@ export function GastoFijoModal({
                               </>
                             ) : (
                               <TouchableOpacity
-                                style={styles.categoriaSelect}
+                                style={[styles.categoriaSelect, categoriaError && styles.categoriaSelectError]}
                                 onPress={() => handleAbrirCategoriaModal(tempId)}
                               >
                                 <Text style={styles.categoriaSelectText}>
@@ -348,7 +358,12 @@ export function GastoFijoModal({
                             <MaterialCommunityIcons name="close-circle" size={24} color="#E74C3C" />
                           </TouchableOpacity>
                         </View>
-                        
+                        {categoriaError && (
+                          <Text variant="bodySmall" style={styles.fieldError}>
+                            Debes seleccionar una categoría
+                          </Text>
+                        )}
+
                         <TextInput
                           label="Nombre del gasto fijo"
                           placeholder="Ej: Internet/WiFi"
@@ -356,11 +371,17 @@ export function GastoFijoModal({
                           onChangeText={(text) => handleNombreChange(gastoFijoEdit.tempId, text)}
                           mode="outlined"
                           disabled={creating}
+                          error={!!nombreError}
                           style={styles.input}
                           contentStyle={styles.inputContent}
                           outlineStyle={styles.inputOutline}
                           left={<TextInput.Icon icon="text" />}
                         />
+                        {nombreError && (
+                          <Text variant="bodySmall" style={styles.fieldError}>
+                            El nombre es obligatorio
+                          </Text>
+                        )}
 
                         <Text variant="bodySmall" style={styles.inputLabel}>
                           Si desconoces el monto o este no es fijo, puedes dejarlo en 0 y registrarlo cuando realices el pago.
@@ -384,10 +405,13 @@ export function GastoFijoModal({
                   })
                 )}
 
+                {/* Error de API (mensaje general debajo del listado) */}
                 {createError && (
-                  <Text variant="bodySmall" style={styles.errorText}>
-                    {createError}
-                  </Text>
+                  <View style={styles.errorContainer}>
+                    <Text variant="bodyMedium" style={styles.errorText}>
+                      {createError}
+                    </Text>
+                  </View>
                 )}
               </ScrollView>
 
@@ -561,6 +585,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
+  categoriaSelectError: {
+    borderColor: '#C62828',
+  },
   categoriaSelectText: {
     color: '#666666',
     fontSize: 14,
@@ -586,9 +613,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: 'italic',
   },
-  errorText: {
-    color: '#D32F2F',
+  fieldError: {
+    color: '#C62828',
+    marginTop: -16,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  errorContainer: {
     marginTop: 8,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FFEBEE',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+  },
+  errorText: {
+    color: '#C62828',
     textAlign: 'center',
   },
   modalActions: {

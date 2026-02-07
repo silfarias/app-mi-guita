@@ -1,24 +1,24 @@
 import { BalanceCard } from '@/components/balance-card';
 import { ComparacionMesAnterior } from '@/components/comparacion-mes-anterior';
 import { GraficoTortaCategorias } from '@/components/grafico-torta-categorias';
-import { MovimientoCard } from '@/components/movimiento-card';
-import { MovimientoModal } from '@/components/movimiento-modal';
 import { PaginationBar } from '@/components/pagination-bar';
 import { ResumenCards } from '@/components/resumen-cards';
 import { SaldosPorMedioPago } from '@/components/saldos-por-medio-pago';
 import { Top5Categorias } from '@/components/top5-categorias';
+import { Header } from '@/components/ui/header';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
+import { MovimientoCard } from '@/features/movimiento/components/movimiento-card';
+import { MovimientoModal } from '@/features/movimiento/components/movimiento-modal';
 import { useMovimientosConFiltros } from '@/features/movimiento/hooks/movimiento.hook';
-import { MovimientoFiltros, TipoMovimientoEnum } from '@/features/movimiento/interfaces/movimiento.interface';
+import { MovimientoFiltros } from '@/features/movimiento/interfaces/movimiento.interface';
 import { useReporteMensual } from '@/features/reporte/hooks/reporte.hook';
 import { getCurrentMonth, getCurrentYear } from '@/utils/date';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Card, IconButton, Menu, Text } from 'react-native-paper';
+import { Card, Menu, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Header } from '@/components/ui/header';
 
 export default function ConsultasHistoricasScreen() {
   const insets = useSafeAreaInsets();

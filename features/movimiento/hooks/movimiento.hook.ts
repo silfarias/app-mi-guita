@@ -18,9 +18,10 @@ export function useMovimientoForm() {
   const [data, setData] = useState<MovimientoResponse | null>(null);
 
   const { control, handleSubmit, formState: { errors }, reset: resetForm, watch, setValue } = useForm<MovimientoRequest>({
+    mode: 'onSubmit',
     defaultValues: {
       infoInicialId: 0,
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: '',
       tipoMovimiento: TipoMovimientoEnum.EGRESO,
       descripcion: '',
       categoriaId: 0,

@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect } from 'react';
-import { StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { ImageSourcePropType, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Avatar, Text } from 'react-native-paper';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -17,6 +17,8 @@ export interface SideMenuItem {
   loading?: boolean;
   textColor?: string;
   iconColor?: string;
+  /** Si se define, se muestra Avatar.Image en lugar del icono (ej. para "Mi perfil") */
+  avatarSource?: ImageSourcePropType;
 }
 
 interface SideMenuProps {
@@ -76,18 +78,27 @@ export function SideMenu({ visible, onClose, items, title = 'Opciones' }: SideMe
 
         <View style={styles.menuContent}>
           {items.map((item, index) => (
+          
             <TouchableOpacity
               key={index}
               style={styles.menuItem}
               onPress={item.onPress}
               disabled={item.disabled || item.loading}
             >
-              <MaterialCommunityIcons
-                name={item.icon as any}
-                size={24}
-                color={item.iconColor || '#333333'}
-                style={styles.menuIcon}
-              />
+              {item.avatarSource ? (
+                <Avatar.Image
+                  size={40}
+                  source={item.avatarSource}
+                  style={styles.menuAvatar}
+                />
+              ) : (
+                <MaterialCommunityIcons
+                  name={item.icon as any}
+                  size={24}
+                  color={item.iconColor || '#333333'}
+                  style={styles.menuIcon}
+                />
+              )}
               <Text
                 variant="bodyLarge"
                 style={[
@@ -168,6 +179,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F0F0F0',
   },
   menuIcon: {
+    marginRight: 16,
+  },
+  menuAvatar: {
     marginRight: 16,
   },
   menuItemText: {

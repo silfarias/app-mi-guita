@@ -11,34 +11,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function GastosFijosScreen() {
   const insets = useSafeAreaInsets();
   const [isGastoFijoModalVisible, setIsGastoFijoModalVisible] = useState(false);
-  const { data: gastosFijosData, loading, error, fetchMisGastosFijos } = useMisGastosFijos();
+  const { gastosFijos, loading, error, fetchMisGastosFijos } = useMisGastosFijos();
 
   useEffect(() => {
     fetchMisGastosFijos();
   }, []);
 
-  const formatCurrency = (amount: string | number) => {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  const formatCurrency = (amount: string | number | null | undefined) => {
+    const num =
+      amount === null || amount === undefined || amount === ''
+        ? 0
+        : typeof amount === 'string'
+          ? parseFloat(amount) || 0
+          : Number.isFinite(amount)
+            ? amount
+            : 0;
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
       currency: 'ARS',
-      minimumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(num);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const mes = meses[date.getMonth()];
-    const anio = date.getFullYear();
-    return `${mes} ${anio}`;
   };
 
   const handleRefresh = () => {
     fetchMisGastosFijos();
   };
-
-  const gastosFijos = gastosFijosData?.gastosFijos || [];
 
   return (
     <View style={styles.container}>
@@ -107,114 +105,44 @@ export default function GastosFijosScreen() {
             </View>
 
             {/* Lista de gastos fijos */}
-            {gastosFijos.map((gastoFijo) => {
-              const totalPagos = gastoFijo.pagos.length;
-              const pagosPagados = gastoFijo.pagos.filter((p) => p.pagado).length;
-              const pagosPendientes = totalPagos - pagosPagados;
-
-              return (
-                <Card key={gastoFijo.id} style={styles.gastoFijoCard}>
-                  <Card.Content>
-                    <View style={styles.gastoFijoHeader}>
-                      <View style={styles.gastoFijoLeft}>
-                        <View
-                          style={[
-                            styles.categoriaIconContainer,
-                            { backgroundColor: `${gastoFijo.categoria.color}20` },
-                          ]}
-                        >
-                          <MaterialCommunityIcons
-                            name={gastoFijo.categoria.icono as any}
-                            size={24}
-                            color={gastoFijo.categoria.color}
-                          />
-                        </View>
-                        <View style={styles.gastoFijoInfo}>
-                          <Text variant="titleMedium" style={styles.gastoFijoNombre}>
-                            {gastoFijo.nombre}
-                          </Text>
-                          <Text variant="bodySmall" style={styles.gastoFijoCategoria}>
-                            {gastoFijo.categoria.nombre}
-                          </Text>
-                        </View>
+            {gastosFijos.map((gastoFijo) => (
+              <Card key={gastoFijo.id} style={styles.gastoFijoCard}>
+                <Card.Content>
+                  <View style={styles.gastoFijoHeader}>
+                    <View style={styles.gastoFijoLeft}>
+                      <View
+                        style={[
+                          styles.categoriaIconContainer,
+                          { backgroundColor: `${gastoFijo.categoria.color}20` },
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name={gastoFijo.categoria.icono as any}
+                          size={24}
+                          color={gastoFijo.categoria.color}
+                        />
                       </View>
-                      <View style={styles.gastoFijoRight}>
-                        <Text variant="titleLarge" style={styles.gastoFijoMonto}>
-                          {formatCurrency(gastoFijo.monto)}
+                      <View style={styles.gastoFijoInfo}>
+                        <Text variant="titleMedium" style={styles.gastoFijoNombre}>
+                          {gastoFijo.nombre}
                         </Text>
-                        <Text variant="bodySmall" style={styles.gastoFijoMontoLabel}>
-                          por mes
+                        <Text variant="bodySmall" style={styles.gastoFijoCategoria}>
+                          {gastoFijo.categoria.nombre}
                         </Text>
                       </View>
                     </View>
-
-                    {/* Resumen de pagos */}
-                    {totalPagos > 0 && (
-                      <View style={styles.pagosResumen}>
-                        <View style={styles.pagoStat}>
-                          <MaterialCommunityIcons name="check-circle" size={16} color="#27AE60" />
-                          <Text variant="bodySmall" style={styles.pagoStatText}>
-                            {pagosPagados} pagado{pagosPagados !== 1 ? 's' : ''}
-                          </Text>
-                        </View>
-                        {pagosPendientes > 0 && (
-                          <View style={styles.pagoStat}>
-                            <MaterialCommunityIcons name="clock-outline" size={16} color="#F39C12" />
-                            <Text variant="bodySmall" style={styles.pagoStatText}>
-                              {pagosPendientes} pendiente{pagosPendientes !== 1 ? 's' : ''}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    )}
-
-                    {/* Lista de pagos */}
-                    {gastoFijo.pagos.length > 0 && (
-                      <View style={styles.pagosContainer}>
-                        <Text variant="bodySmall" style={styles.pagosTitle}>
-                          Historial de pagos:
-                        </Text>
-                        {gastoFijo.pagos.map((pago) => (
-                          <View key={pago.id} style={styles.pagoItem}>
-                            <View style={styles.pagoItemLeft}>
-                              <MaterialCommunityIcons
-                                name={pago.pagado ? 'check-circle' : 'clock-outline'}
-                                size={20}
-                                color={pago.pagado ? '#27AE60' : '#F39C12'}
-                              />
-                              <View style={styles.pagoItemInfo}>
-                                <Text variant="bodyMedium" style={styles.pagoItemMes}>
-                                  {pago.infoInicial.mes} {pago.infoInicial.anio}
-                                </Text>
-                                <Text variant="bodySmall" style={styles.pagoItemMonto}>
-                                  {formatCurrency(pago.montoPago)}
-                                </Text>
-                              </View>
-                            </View>
-                            <View
-                              style={[
-                                styles.pagoBadge,
-                                { backgroundColor: pago.pagado ? '#E8F5E9' : '#FFF3E0' },
-                              ]}
-                            >
-                              <Text
-                                variant="bodySmall"
-                                style={[
-                                  styles.pagoBadgeText,
-                                  { color: pago.pagado ? '#27AE60' : '#F39C12' },
-                                ]}
-                              >
-                                {pago.pagado ? 'Pagado' : 'Pendiente'}
-                              </Text>
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                  </Card.Content>
-                </Card>
-              );
-            })}
+                    <View style={styles.gastoFijoRight}>
+                      <Text variant="titleLarge" style={styles.gastoFijoMonto}>
+                        {formatCurrency(gastoFijo.montoFijo || 0)}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.gastoFijoMontoLabel}>
+                        por mes
+                      </Text>
+                    </View>
+                  </View>
+                </Card.Content>
+              </Card>
+            ))}
           </>
         )}
       </ScrollView>
@@ -342,66 +270,5 @@ const styles = StyleSheet.create({
   gastoFijoMontoLabel: {
     color: '#999999',
     marginTop: 2,
-  },
-  pagosResumen: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  pagoStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  pagoStatText: {
-    color: '#666666',
-  },
-  pagosContainer: {
-    marginTop: 8,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  pagosTitle: {
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 12,
-  },
-  pagoItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  pagoItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  pagoItemInfo: {
-    flex: 1,
-  },
-  pagoItemMes: {
-    fontWeight: '500',
-    color: '#333333',
-    marginBottom: 2,
-  },
-  pagoItemMonto: {
-    color: '#666666',
-  },
-  pagoBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  pagoBadgeText: {
-    fontWeight: '600',
-    fontSize: 11,
   },
 });

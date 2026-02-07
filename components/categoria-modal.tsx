@@ -1,3 +1,4 @@
+import { Categoria } from '@/features/categoria/interfaces/categoria.interface';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
@@ -14,7 +15,7 @@ import { Text, TextInput } from 'react-native-paper';
 interface CategoriaModalProps {
   visible: boolean;
   onDismiss: () => void;
-  onSelect: (categoriaId: number) => void;
+  onSelect: (categoria: Categoria) => void;
   selectedValue?: number;
   disabled?: boolean;
 }
@@ -58,9 +59,9 @@ export function CategoriaModal({
     }
   }, [searchText, visible]);
 
-  const handleSelect = (categoriaId: number) => {
+  const handleSelect = (categoria: Categoria) => {
     if (!disabled) {
-      onSelect(categoriaId);
+      onSelect(categoria);
       onDismiss();
     }
   };
@@ -134,7 +135,7 @@ export function CategoriaModal({
                   categorias.map((categoria) => (
                     <TouchableOpacity
                       key={categoria.id}
-                      onPress={() => handleSelect(categoria.id)}
+                      onPress={() => handleSelect(categoria)}
                       disabled={disabled}
                       style={[
                         styles.item,

@@ -5,7 +5,7 @@ import { SearchRequest } from "@/types/api.types";
 export interface GastoFijoResponse {
   id: number;
   nombre: string;
-  monto: string;
+  montoFijo?: string;
   categoria: Categoria;
 }
 

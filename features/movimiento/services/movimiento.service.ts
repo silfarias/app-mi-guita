@@ -9,7 +9,8 @@ export class MovimientoService {
   }
 
   async update(token: string, id: string, request: Partial<MovimientoRequest>): Promise<MovimientoResponse> {
-    return fetchAuthPatch<MovimientoResponse, Partial<MovimientoRequest>>(token, `/movimiento/${id}`, request, {
+    const { infoInicialId: _omit, ...payload } = request ?? {};
+    return fetchAuthPatch<MovimientoResponse, Partial<Omit<MovimientoRequest, 'infoInicialId'>>>(token, `/movimiento/${id}`, payload, {
       defaultError: "Error al actualizar el movimiento",
     });
   }

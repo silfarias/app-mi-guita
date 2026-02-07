@@ -16,6 +16,7 @@ export default function InfoInicialMesScreen() {
   const insets = useSafeAreaInsets();
 
   const user = useAuthStore((state) => state.usuario?.persona?.nombre || 'Usuario');
+  const usuarioFotoPerfil = useAuthStore((state) => state.usuario?.fotoPerfil);
   const { logout, loading: logoutLoading } = useLogout();
   const { data: infoInicial, loading: loadingInfo, error: errorInfo, fetch } = useInfoInicialPorUsuario();
 
@@ -68,6 +69,9 @@ export default function InfoInicialMesScreen() {
         closeMenu();
         router.push('/profile' as any);
       },
+      avatarSource: usuarioFotoPerfil?.trim()
+        ? { uri: usuarioFotoPerfil }
+        : require('../../assets/images/icon.png'),
     },
     {
       icon: 'format-list-bulleted',

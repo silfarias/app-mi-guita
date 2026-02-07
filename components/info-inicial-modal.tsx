@@ -129,10 +129,10 @@ export function InfoInicialModal({
     setMediosPagoEdit((prev) => [{ medioPagoId: null, monto: 0, tempId }, ...prev]);
   };
 
-  const handleSeleccionarMedioPago = (medioPagoId: number) => {
+  const handleSeleccionarMedioPago = (medio: { id: number }) => {
     if (medioPagoModalTempId) {
       setMediosPagoEdit((prev) =>
-        prev.map((mp) => (mp.tempId === medioPagoModalTempId ? { ...mp, medioPagoId } : mp))
+        prev.map((mp) => (mp.tempId === medioPagoModalTempId ? { ...mp, medioPagoId: medio.id } : mp))
       );
       setMedioPagoModalTempId(null);
     }

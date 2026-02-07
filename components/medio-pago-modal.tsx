@@ -18,7 +18,7 @@ import { Text } from 'react-native-paper';
 interface MedioPagoModalProps {
   visible: boolean;
   onDismiss: () => void;
-  onSelect: (medioPagoId: number) => void;
+  onSelect: (medio: MedioPago) => void;
   selectedValue?: number;
   disabled?: boolean;
 }
@@ -51,9 +51,9 @@ export function MedioPagoModal({
     }
   }, [visible]);
 
-  const handleSelect = (medioPagoId: number) => {
+  const handleSelect = (medio: MedioPago) => {
     if (!disabled) {
-      onSelect(medioPagoId);
+      onSelect(medio);
       onDismiss();
     }
   };
@@ -130,7 +130,7 @@ export function MedioPagoModal({
                   mediosPago.map((medio) => (
                     <TouchableOpacity
                       key={medio.id}
-                      onPress={() => handleSelect(medio.id)}
+                      onPress={() => handleSelect(medio)}
                       disabled={disabled}
                       style={[
                         styles.item,

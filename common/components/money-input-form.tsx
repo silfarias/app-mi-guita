@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleProp, TextStyle, View } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
 
@@ -32,6 +32,31 @@ const fieldErrorStyle = {
   marginLeft: 4,
 };
 
+/**
+ * Formatea un número como moneda en formato argentino: X.XXX,XX
+ * Punto como separador de miles, coma como decimal, 2 decimales.
+ */
+function formatMoneyDisplay(value: number): string {
+  if (value === 0) return '';
+  const fixed = Math.abs(value).toFixed(2);
+  const [intPart, decPart] = fixed.split('.');
+  const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const result = `${formattedInt},${decPart}`;
+  return value < 0 ? `-${result}` : result;
+}
+
+/**
+ * Parsea un string formateado (1.250,50) o parcial (1,5) a número.
+ * Elimina puntos (miles), trata coma como decimal.
+ */
+function parseMoneyInput(text: string): number {
+  const trimmed = text.trim();
+  if (trimmed === '' || trimmed === ',' || trimmed === '-') return 0;
+  const normalized = trimmed.replace(/\./g, '').replace(',', '.');
+  const num = parseFloat(normalized);
+  return Number.isNaN(num) ? 0 : num;
+}
+
 export function MoneyInputForm({
   value,
   onChange,
@@ -49,16 +74,19 @@ export function MoneyInputForm({
   contentStyle,
   outlineStyle = defaultOutlineStyle,
 }: MoneyInputFormProps) {
-  const displayValue = value === 0 ? '' : value.toString();
+  const displayValue = formatMoneyDisplay(value);
+  const [selection, setSelection] = useState<{ start: number; end: number } | undefined>(undefined);
 
   const handleChangeText = (text: string) => {
-    const trimmed = text.trim().replace(',', '.');
-    if (trimmed === '' || trimmed === '-') {
-      onChange(0);
-      return;
-    }
-    const num = parseFloat(trimmed);
-    onChange(Number.isNaN(num) ? 0 : num);
+    const num = parseMoneyInput(text);
+    let finalValue = num;
+    if (min != null && num < min) finalValue = min;
+    if (max != null && num > max) finalValue = max;
+    onChange(finalValue);
+    const newDisplay = formatMoneyDisplay(finalValue);
+    const commaPos = newDisplay.indexOf(',');
+    const cursorPos = commaPos >= 0 ? commaPos : newDisplay.length;
+    setSelection({ start: cursorPos, end: cursorPos });
   };
 
   const handleBlur = () => {
@@ -75,9 +103,11 @@ export function MoneyInputForm({
     <View style={{ marginBottom: error ? 4 : 0 }}>
       <TextInput
         label={label}
-        placeholder={placeholder}
+        placeholder="0,00"
         value={displayValue}
         onChangeText={handleChangeText}
+        selection={selection}
+        onSelectionChange={() => setSelection(undefined)}
         onBlur={handleBlur}
         mode="outlined"
         keyboardType={keyboardType}

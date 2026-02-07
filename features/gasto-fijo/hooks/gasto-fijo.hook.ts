@@ -176,3 +176,30 @@ export function useUpdateGastoFijo() {
     reset,
   };
 }
+
+/**
+ * Hook para eliminar un gasto fijo.
+ */
+export function useDeleteGastoFijo() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { loading, error, setError, run } = useAsyncRun();
+
+  const deleteGastoFijo = async (id: string | number) => {
+    if (!accessToken) {
+      setError('No hay sesión activa');
+      return;
+    }
+    await run(
+      async () => {
+        await gastoFijoService.delete(accessToken, String(id));
+      },
+      { errorFallback: 'Error al eliminar el gasto fijo', logLabel: 'deleteGastoFijo' }
+    );
+  };
+
+  return {
+    loading,
+    error,
+    deleteGastoFijo,
+  };
+}

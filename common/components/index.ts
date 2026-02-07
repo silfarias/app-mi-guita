@@ -25,3 +25,8 @@ export { CategoriaIconBadge, type CategoriaIconBadgeProps } from './categoria-ic
 export { AmountDisplay, type AmountDisplayProps, type AmountType } from './amount-display';
 export { CardActionsMenu, type CardActionsMenuProps, type CardActionItem } from './card-actions-menu';
 export { MedioPagoLabel, type MedioPagoLabelProps } from './medio-pago-label';
+
+export { AddFAB, type AddFABProps } from './add-fab';
+export { EmptyStateCard, type EmptyStateCardProps } from './empty-state-card';
+export { ErrorStateCard, type ErrorStateCardProps } from './error-state-card';
+export { LoadingStateBlock, type LoadingStateBlockProps } from './loading-state-block';

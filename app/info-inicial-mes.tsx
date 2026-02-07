@@ -71,7 +71,7 @@ export default function InfoInicialMesScreen() {
       },
       avatarSource: usuarioFotoPerfil?.trim()
         ? { uri: usuarioFotoPerfil }
-        : require('../../assets/images/icon.png'),
+        : require('../assets/images/icon.png'),
     },
     {
       icon: 'format-list-bulleted',

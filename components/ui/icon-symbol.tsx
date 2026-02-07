@@ -23,6 +23,7 @@ const MAPPING = {
   'arrow.left.arrow.right': 'swap-horiz',
   'clock.fill': 'schedule',
   'creditcard.fill': 'credit-card',
+  'repeat': 'repeat', // gastos fijos / recurrentes
 } as IconMapping;
 
 /**

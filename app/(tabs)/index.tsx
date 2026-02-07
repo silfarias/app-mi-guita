@@ -1,7 +1,7 @@
 import { BalanceCard } from '@/components/balance-card';
 import { ComparacionMesAnterior } from '@/components/comparacion-mes-anterior';
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
-import { GastoFijoModal } from '@/components/gasto-fijo-modal';
+import { GastoFijoModal } from '@/features/gasto-fijo/components/gasto-fijo-modal';
 import { GraficoTortaCategorias } from '@/components/grafico-torta-categorias';
 import { InfoInicialModal } from '@/components/info-inicial-modal';
 import { ResumenCards } from '@/components/resumen-cards';
@@ -92,13 +92,15 @@ export default function HomeScreen() {
         closeMenu();
         router.push('/consultas-historicas' as any);
       },
+      textColor: '#6CB4EE',
+      iconColor: '#6CB4EE',
     },
     {
       icon: 'receipt-text',
-      label: 'Gastos Fijos',
+      label: 'Informacion Inicial',
       onPress: () => {
         closeMenu();
-        router.push('/gastos-fijos' as any);
+        router.push('/info-inicial-mes' as any);
       },
       disabled: loadingGastosFijos,
       loading: loadingGastosFijos,

@@ -12,15 +12,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {
-  Button,
-  Text,
-  TextInput,
-} from 'react-native-paper';
+import { Button, Text, TextInput } from 'react-native-paper';
 
+import { AuthFooterLink } from '@/components/auth-footer-link';
+import { AuthSectionHeader } from '@/components/auth-section-header';
 import { MiGuitaBrand } from '@/components/miguita-brand';
+import { FormErrorBlock, TextInputFormField } from '@/common/components';
 import { useSignupForm } from '@/features/auth/hooks/auth.hook';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Entypo, MaterialCommunityIcons } from '@expo/vector-icons';
+
 
 export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
@@ -49,15 +49,10 @@ export default function RegisterScreen() {
           {/* Logo/Bienvenida MiGuita */}
           <MiGuitaBrand />
 
-          {/* Título */}
-          <View style={styles.titleContainer}>
-            <Text variant="headlineLarge" style={styles.title}>
-              Crear Cuenta
-            </Text>
-            <Text variant="bodyLarge" style={styles.subtitle}>
-              Únete a MiGuita y comienza a gestionar tu dinero
-            </Text>
-          </View>
+          <AuthSectionHeader
+            title="Crear Cuenta"
+            subtitle="Únete a MiGuita y comienza a gestionar tu dinero"
+          />
 
           {/* Selector de Foto de Perfil */}
           <Controller
@@ -107,9 +102,9 @@ export default function RegisterScreen() {
                     {value ? (
                       <>
                         <View style={styles.photoPreview}>
-                          <Image 
-                            source={{ uri: (value as any)?.uri || String(value) }} 
-                            style={styles.photoImage} 
+                          <Image
+                            source={{ uri: typeof (value as any)?.uri === 'string' ? (value as any).uri : String(value ?? '') }}
+                            style={styles.photoImage}
                           />
                         </View>
                         <TouchableOpacity
@@ -126,7 +121,9 @@ export default function RegisterScreen() {
                         onPress={pickImage}
                         disabled={loading}
                       >
-                        <Text style={styles.photoPlaceholderIcon}>📷</Text>
+                        <Text style={styles.photoPlaceholderIcon}>
+                        <Entypo name="camera" size={30} color="black" />
+                        </Text>
                         <Text variant="bodySmall" style={styles.photoPlaceholderText}>
                           Toca para agregar foto
                         </Text>
@@ -138,11 +135,9 @@ export default function RegisterScreen() {
             }}
           />
 
-          {/* Campos en dos columnas para nombre y apellido */}
           <View style={styles.row}>
-            {/* Campo de Nombre */}
             <View style={styles.halfInput}>
-              <Controller
+              <TextInputFormField
                 control={control}
                 name="nombre"
                 rules={{
@@ -152,34 +147,15 @@ export default function RegisterScreen() {
                     message: 'El nombre debe tener al menos 2 caracteres',
                   },
                 }}
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    label="Nombre"
-                    placeholder="Juan"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    mode="outlined"
-                    autoCapitalize="words"
-                    autoComplete="given-name"
-                    disabled={loading}
-                    error={!!errors.nombre}
-                    style={styles.input}
-                    contentStyle={styles.inputContent}
-                    outlineStyle={styles.inputOutline}
-                  />
-                )}
+                label="Nombre"
+                placeholder="Juan"
+                disabled={loading}
+                autoCapitalize="words"
+                autoComplete="name"
               />
-              {errors.nombre && (
-                <Text variant="bodySmall" style={styles.fieldError}>
-                  {errors.nombre.message}
-                </Text>
-              )}
             </View>
-
-            {/* Campo de Apellido */}
             <View style={styles.halfInput}>
-              <Controller
+              <TextInputFormField
                 control={control}
                 name="apellido"
                 rules={{
@@ -189,73 +165,47 @@ export default function RegisterScreen() {
                     message: 'El apellido debe tener al menos 2 caracteres',
                   },
                 }}
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    label="Apellido"
-                    placeholder="Pérez"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    mode="outlined"
-                    autoCapitalize="words"
-                    autoComplete="family-name"
-                    disabled={loading}
-                    error={!!errors.apellido}
-                    style={styles.input}
-                    contentStyle={styles.inputContent}
-                    outlineStyle={styles.inputOutline}
-                  />
-                )}
+                label="Apellido"
+                placeholder="Pérez"
+                disabled={loading}
+                autoCapitalize="words"
+                autoComplete="name"
               />
-              {errors.apellido && (
-                <Text variant="bodySmall" style={styles.fieldError}>
-                  {errors.apellido.message}
-                </Text>
-              )}
             </View>
           </View>
 
-          {/* Campo de Nombre de Usuario */}
-          <Controller
+          <TextInputFormField
             control={control}
             name="nombreUsuario"
             rules={{
               required: 'El nombre de usuario es obligatorio',
               minLength: {
-                value: 3,
-                message: 'El nombre de usuario debe tener al menos 3 caracteres',
+                value: 8,
+                message: 'El nombre de usuario debe tener al menos 8 caracteres',
               },
               pattern: {
                 value: /^[a-zA-Z0-9_]+$/,
                 message: 'El nombre de usuario solo puede contener letras, números y guiones bajos',
               },
+              validate: (value) => {
+                const str = typeof value === 'string' ? value : String(value ?? '');
+                if (!str) return true;
+                const hasLetter = /[a-zA-Z]/.test(str);
+                const hasNumber = /[0-9]/.test(str);
+                if (!hasLetter || !hasNumber) {
+                  return 'El nombre de usuario debe contener letras y números';
+                }
+                return true;
+              },
             }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Nombre de Usuario"
-                placeholder="tu_nombre_usuario"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                mode="outlined"
-                autoCapitalize="none"
-                autoComplete="username"
-                disabled={loading}
-                error={!!errors.nombreUsuario}
-                style={styles.input}
-                contentStyle={styles.inputContent}
-                outlineStyle={styles.inputOutline}
-              />
-            )}
+            label="Nombre de Usuario"
+            placeholder="tu_nombre_usuario"
+            disabled={loading}
+            autoCapitalize="none"
+            autoComplete="username"
           />
-          {errors.nombreUsuario && (
-            <Text variant="bodySmall" style={styles.fieldError}>
-              {errors.nombreUsuario.message}
-            </Text>
-          )}
 
-          {/* Campo de Email */}
-          <Controller
+          <TextInputFormField
             control={control}
             name="email"
             rules={{
@@ -265,33 +215,15 @@ export default function RegisterScreen() {
                 message: 'El email no es válido',
               },
             }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Email"
-                placeholder="tu@email.com"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                mode="outlined"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                disabled={loading}
-                error={!!errors.email}
-                style={styles.input}
-                contentStyle={styles.inputContent}
-                outlineStyle={styles.inputOutline}
-              />
-            )}
+            label="Email"
+            placeholder="tu@email.com"
+            disabled={loading}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
           />
-          {errors.email && (
-            <Text variant="bodySmall" style={styles.fieldError}>
-              {errors.email.message}
-            </Text>
-          )}
 
-          {/* Campo de Contraseña */}
-          <Controller
+          <TextInputFormField
             control={control}
             name="contrasena"
             rules={{
@@ -301,39 +233,21 @@ export default function RegisterScreen() {
                 message: 'La contraseña debe tener al menos 6 caracteres',
               },
             }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Contraseña"
-                placeholder="••••••••"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                mode="outlined"
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoComplete="password-new"
-                disabled={loading}
-                error={!!errors.contrasena}
-                right={
-                  <TextInput.Icon
-                    icon={showPassword ? 'eye-off' : 'eye'}
-                    onPress={() => setShowPassword(!showPassword)}
-                  />
-                }
-                style={styles.input}
-                contentStyle={styles.inputContent}
-                outlineStyle={styles.inputOutline}
+            label="Contraseña"
+            placeholder="••••••••"
+            disabled={loading}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoComplete="password"
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye-off' : 'eye'}
+                onPress={() => setShowPassword(!showPassword)}
               />
-            )}
+            }
           />
-          {errors.contrasena && (
-            <Text variant="bodySmall" style={styles.fieldError}>
-              {errors.contrasena.message}
-            </Text>
-          )}
 
-          {/* Campo de Confirmar Contraseña */}
-          <Controller
+          <TextInputFormField
             control={control}
             name="confirmarContrasena"
             rules={{
@@ -341,45 +255,21 @@ export default function RegisterScreen() {
               validate: (value) =>
                 value === password || 'Las contraseñas no coinciden',
             }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                label="Confirmar Contraseña"
-                placeholder="••••••••"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                mode="outlined"
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                autoComplete="password-new"
-                disabled={loading}
-                error={!!errors.confirmarContrasena}
-                right={
-                  <TextInput.Icon
-                    icon={showConfirmPassword ? 'eye-off' : 'eye'}
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  />
-                }
-                style={styles.input}
-                contentStyle={styles.inputContent}
-                outlineStyle={styles.inputOutline}
+            label="Confirmar Contraseña"
+            placeholder="••••••••"
+            disabled={loading}
+            secureTextEntry={!showConfirmPassword}
+            autoCapitalize="none"
+            autoComplete="password"
+            right={
+              <TextInput.Icon
+                icon={showConfirmPassword ? 'eye-off' : 'eye'}
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
               />
-            )}
+            }
           />
-          {errors.confirmarContrasena && (
-            <Text variant="bodySmall" style={styles.fieldError}>
-              {errors.confirmarContrasena.message}
-            </Text>
-          )}
 
-          {/* Mensaje de error general */}
-          {error && (
-            <View style={styles.errorContainer}>
-              <Text variant="bodyMedium" style={styles.errorText}>
-                {error}
-              </Text>
-            </View>
-          )}
+          {error && <FormErrorBlock message={error} />}
 
           {/* Botón de Registrarse */}
           <Button
@@ -394,17 +284,11 @@ export default function RegisterScreen() {
             {loading ? 'Registrando...' : 'Registrarse'}
           </Button>
 
-          {/* Enlace para iniciar sesión */}
-          <View style={styles.loginContainer}>
-            <Text variant="bodyMedium" style={styles.loginText}>
-              ¿Ya tienes una cuenta?{' '}
-            </Text>
-            <TouchableOpacity onPress={() => router.push('/login' as any)}>
-              <Text variant="bodyMedium" style={styles.loginLink}>
-                Inicia sesión
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <AuthFooterLink
+            promptText="¿Ya tienes una cuenta?"
+            linkText="Inicia sesión"
+            onPress={() => router.push('/login' as any)}
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -426,20 +310,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
-  },
-  titleContainer: {
-    marginBottom: 32,
-    alignItems: 'center',
-  },
-  title: {
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: '#666666',
-    textAlign: 'center',
   },
   photoContainer: {
     marginBottom: 24,
@@ -506,44 +376,13 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 10,
   },
   halfInput: {
     flex: 1,
   },
-  input: {
-    marginBottom: 20,
-    backgroundColor: '#FFFFFF',
-  },
-  inputContent: {
-    fontSize: 16,
-  },
-  inputOutline: {
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  errorContainer: {
-    marginTop: 8,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#FFEBEE',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FFCDD2',
-  },
-  errorText: {
-    color: '#C62828',
-    textAlign: 'center',
-  },
-  fieldError: {
-    color: '#C62828',
-    marginTop: -12,
-    marginBottom: 12,
-    marginLeft: 4,
-  },
   button: {
-    marginTop: 8,
+    marginTop: 20,
     borderRadius: 12,
     shadowColor: '#6CB4EE',
     shadowOffset: {
@@ -559,19 +398,6 @@ const styles = StyleSheet.create({
   },
   buttonLabel: {
     fontSize: 16,
-    fontWeight: '600',
-  },
-  loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  loginText: {
-    color: '#666666',
-  },
-  loginLink: {
-    color: '#6CB4EE',
     fontWeight: '600',
   },
 });

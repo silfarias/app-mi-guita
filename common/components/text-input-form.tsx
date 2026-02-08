@@ -18,6 +18,10 @@ export interface TextInputFormProps {
   outlineStyle?: object;
   left?: React.ReactNode;
   right?: React.ReactNode;
+  secureTextEntry?: boolean;
+  keyboardType?: 'default' | 'email-address' | 'numeric' | 'decimal-pad' | 'visible-password';
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoComplete?: 'email' | 'username' | 'password' | 'name' | 'off';
 }
 
 const defaultOutlineStyle = { borderRadius: 12, borderWidth: 1.5 };
@@ -39,6 +43,10 @@ export function TextInputForm(p: TextInputFormProps) {
         maxLength={a.maxLength}
         disabled={a.disabled || false}
         error={!!a.error}
+        secureTextEntry={a.secureTextEntry}
+        keyboardType={a.keyboardType}
+        autoCapitalize={a.autoCapitalize}
+        autoComplete={a.autoComplete}
         style={[{ backgroundColor: '#FFFFFF', marginTop: 15 }, a.style]}
         contentStyle={a.contentStyle}
         outlineStyle={a.outlineStyle || defaultOutlineStyle}

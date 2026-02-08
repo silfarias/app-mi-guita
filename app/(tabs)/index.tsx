@@ -87,25 +87,21 @@ export default function HomeScreen() {
     },
     {
       icon: 'receipt-text',
-      label: 'Informacion Inicial',
+      label: 'Informacion Inicial del Mes',
       onPress: () => {
         closeMenu();
         router.push('/info-inicial-mes' as any);
       },
       disabled: loadingGastosFijos,
       loading: loadingGastosFijos,
-      textColor: '#6CB4EE',
-      iconColor: '#6CB4EE',
     },
     {
       icon: 'format-list-bulleted',
-      label: 'Consultas Históricas',
+      label: 'Resumen Mensual',
       onPress: () => {
         closeMenu();
         router.push('/consultas-historicas' as any);
       },
-      textColor: '#6CB4EE',
-      iconColor: '#6CB4EE',
     },
     {
       icon: 'logout',

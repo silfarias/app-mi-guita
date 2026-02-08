@@ -7,8 +7,15 @@ import {
 import { PortalModalForm } from '@/common/forms';
 import { Categoria } from '@/features/categoria/interfaces/categoria.interface';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
-import { useCreateBulkGastoFijo } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
-import { BulkGastoFijoRequest } from '@/features/gasto-fijo/interfaces/gasto-fijo-request.interface';
+import {
+  useCreateBulkGastoFijo,
+  useGastoFijoById,
+  useUpdateGastoFijo,
+} from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
+import {
+  BulkGastoFijoRequest,
+  GastoFijoRequest,
+} from '@/features/gasto-fijo/interfaces/gasto-fijo-request.interface';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
@@ -43,11 +50,31 @@ export interface GastoFijoModalProps {
   visible: boolean;
   onDismiss: () => void;
   onSuccess?: () => void;
+  gastoFijoId?: number | null;
 }
 
-export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModalProps) {
+export function GastoFijoModal({
+  visible,
+  onDismiss,
+  onSuccess,
+  gastoFijoId,
+}: GastoFijoModalProps) {
+  const isEditMode = gastoFijoId != null;
+
   const { data: categorias, fetchCategorias } = useCategorias({ activo: true });
-  const { createBulk, loading: creating, error: createError, reset } = useCreateBulkGastoFijo();
+  const { data: gastoFijoData, loading: loadingGastoFijo, fetchGastoFijoById } =
+    useGastoFijoById(gastoFijoId);
+  const { createBulk, loading: creating, error: createError, reset: resetCreate } =
+    useCreateBulkGastoFijo();
+  const {
+    update,
+    loading: updating,
+    error: updateError,
+    reset: resetUpdate,
+  } = useUpdateGastoFijo();
+
+  const loading = creating || updating || loadingGastoFijo;
+  const error = createError || updateError;
 
   const {
     control,
@@ -61,7 +88,7 @@ export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModal
     mode: 'onSubmit',
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: 'gastosFijos',
   });
@@ -71,10 +98,33 @@ export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModal
   const [selectedCategoriaByIndex, setSelectedCategoriaByIndex] = useState<Record<number, Categoria>>({});
 
   useEffect(() => {
+    if (visible && isEditMode && gastoFijoId) {
+      fetchGastoFijoById();
+    }
+  }, [visible, isEditMode, gastoFijoId]);
+
+  useEffect(() => {
     if (visible) {
       fetchCategorias({ activo: true });
     }
   }, [visible]);
+
+  useEffect(() => {
+    if (gastoFijoData && isEditMode && visible) {
+      const montoNum =
+        gastoFijoData.montoFijo == null || gastoFijoData.montoFijo === ''
+          ? 0
+          : parseFloat(gastoFijoData.montoFijo) || 0;
+      replace([
+        {
+          nombre: gastoFijoData.nombre,
+          montoFijo: montoNum,
+          categoriaId: gastoFijoData.categoria.id,
+        },
+      ]);
+      setSelectedCategoriaByIndex({ 0: gastoFijoData.categoria });
+    }
+  }, [gastoFijoData, isEditMode, visible, replace]);
 
   useEffect(() => {
     if (!visible) {
@@ -82,9 +132,10 @@ export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModal
       setSelectedCategoriaByIndex({});
       setActiveCategoriaIndex(null);
       setCategoriaModalVisible(false);
-      reset();
+      resetCreate();
+      resetUpdate();
     }
-  }, [visible, resetForm, reset]);
+  }, [visible, resetForm, resetCreate, resetUpdate]);
 
   const handleAgregarGastoFijo = () => {
     append({ nombre: '', montoFijo: 0, categoriaId: null });
@@ -96,6 +147,40 @@ export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModal
   };
 
   const onSubmit = async (data: GastoFijoBulkFormValues) => {
+    if (isEditMode && gastoFijoId != null) {
+      const primerItem = data.gastosFijos[0];
+      if (!primerItem?.nombre?.trim() || !primerItem?.categoriaId || primerItem.categoriaId <= 0) {
+        Toast.show({
+          type: 'error',
+          text1: 'Datos incompletos',
+          text2: 'El nombre y la categoría son obligatorios',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        return;
+      }
+      try {
+        const payload: Partial<GastoFijoRequest> = {
+          nombre: primerItem.nombre.trim(),
+          montoFijo: primerItem.montoFijo ?? 0,
+          categoriaId: primerItem.categoriaId,
+        };
+        await update(gastoFijoId, payload);
+        Toast.show({
+          type: 'success',
+          text1: '¡Gasto fijo actualizado!',
+          text2: 'El gasto fijo se ha actualizado exitosamente',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        onDismiss();
+        onSuccess?.();
+      } catch {
+        // El error ya se maneja en el hook
+      }
+      return;
+    }
+
     const gastosFijosFiltrados = data.gastosFijos
       .filter((gf) => gf.nombre.trim() !== '' && gf.categoriaId != null && gf.categoriaId > 0)
       .map((gf) => ({
@@ -133,7 +218,7 @@ export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModal
   };
 
   const handleClose = () => {
-    if (!creating) {
+    if (!loading) {
       onDismiss();
     }
   };
@@ -154,24 +239,29 @@ export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModal
     <PortalModalForm
       visible={visible}
       onDismiss={handleClose}
-      title="Registrar Gastos Fijos"
+      title={isEditMode ? 'Editar Gasto Fijo' : 'Registrar Gastos Fijos'}
       onSubmit={handleSubmit(onSubmit)}
-      loading={creating}
-      error={createError ?? undefined}
-      submitLabel={creating ? 'Guardando...' : 'Guardar'}
+      loading={loading}
+      error={error ?? undefined}
+      submitLabel={
+        loading ? (isEditMode ? 'Actualizando...' : 'Guardando...') : isEditMode ? 'Actualizar' : 'Guardar'
+      }
       cancelLabel="Cancelar"
-      topContent={topContent}
+      topContent={!isEditMode ? topContent : undefined}
+      initialLoading={isEditMode && loadingGastoFijo}
     >
       <View style={styles.sectionHeader}>
         <Text variant="titleMedium" style={styles.sectionTitle}>
-          Gastos Fijos
+          {isEditMode ? 'Gasto Fijo' : 'Gastos Fijos'}
         </Text>
-        <TouchableOpacity style={styles.agregarButton} onPress={handleAgregarGastoFijo}>
-          <MaterialCommunityIcons name="plus-circle" size={20} color="#6CB4EE" />
-          <Text variant="bodyMedium" style={styles.agregarButtonText} numberOfLines={1}>
-            Agregar
-          </Text>
-        </TouchableOpacity>
+        {!isEditMode && (
+          <TouchableOpacity style={styles.agregarButton} onPress={handleAgregarGastoFijo}>
+            <MaterialCommunityIcons name="plus-circle" size={20} color="#6CB4EE" />
+            <Text variant="bodyMedium" style={styles.agregarButtonText} numberOfLines={1}>
+              Agregar
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {fields.length === 0 ? (
@@ -192,7 +282,7 @@ export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModal
                   <TouchableOpacity
                     onPress={() => remove(index)}
                     style={styles.deleteButton}
-                    disabled={creating}
+                    disabled={loading}
                   >
                     <MaterialCommunityIcons name="close-circle" size={24} color="red" />
                   </TouchableOpacity>
@@ -236,7 +326,7 @@ export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModal
                           setCategoriaModalVisible(true);
                         }}
                         error={errors.gastosFijos?.[index]?.categoriaId?.message}
-                        disabled={creating}
+                        disabled={loading}
                       />
                       {activeCategoriaIndex === index && (
                         <CategoriaModal
@@ -248,7 +338,7 @@ export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModal
                             handleCerrarCategoriaModal();
                           }}
                           selectedValue={value ?? undefined}
-                          disabled={creating}
+                          disabled={loading}
                         />
                       )}
                     </>
@@ -266,7 +356,7 @@ export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModal
                 errors={errors}
                 label="Nombre del gasto fijo"
                 placeholder="Ej: Internet/WiFi"
-                disabled={creating}
+                disabled={loading}
               />
 
               <MoneyInputFormField
@@ -276,7 +366,7 @@ export function GastoFijoModal({ visible, onDismiss, onSuccess }: GastoFijoModal
                 errors={errors}
                 label="Monto fijo"
                 placeholder="0.00"
-                disabled={creating}
+                disabled={loading}
               />
               <Text variant="bodySmall" style={styles.montoHint}>
                 Si desconoces el monto o no es fijo, puedes dejarlo en 0 y registrarlo cuando

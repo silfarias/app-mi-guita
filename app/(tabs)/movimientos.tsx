@@ -234,7 +234,7 @@ export default function ExploreScreen() {
           <>
             <View style={styles.movimientosContainer}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                Movimientos ({totalMovimientos})
+                Movimientos del Mes ({totalMovimientos})
               </Text>
               {movimientosDelMes.map((movimiento) => (
                 <MovimientoCard

@@ -7,6 +7,7 @@ export interface PagoGastoFijoRequest {
 }
 
 export interface PagoLite {
+  id: number;
   montoPago: number;
   pagado: boolean;
 }

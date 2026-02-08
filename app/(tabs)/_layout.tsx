@@ -51,10 +51,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="gastos-fijo"
+        name="gastos-fijos"
         options={{
           title: 'Gastos Fijos',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="repeat" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
         }}
       />
     </Tabs>

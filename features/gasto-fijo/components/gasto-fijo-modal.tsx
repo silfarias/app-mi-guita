@@ -89,7 +89,7 @@ export function GastoFijoModal({
     mode: 'onSubmit',
   });
 
-  const { fields, append, remove, replace } = useFieldArray({
+  const { fields, prepend, remove, replace } = useFieldArray({
     control,
     name: 'gastosFijos',
   });
@@ -142,7 +142,14 @@ export function GastoFijoModal({
   }, [visible, resetForm, resetCreate, resetUpdate]);
 
   const handleAgregarGastoFijo = () => {
-    append({ nombre: '', montoFijo: 0, categoriaId: null });
+    setSelectedCategoriaByIndex((prev) => {
+      const next: Record<number, Categoria> = {};
+      Object.entries(prev).forEach(([k, v]) => {
+        next[Number(k) + 1] = v;
+      });
+      return next;
+    });
+    prepend({ nombre: '', montoFijo: 0, categoriaId: null });
   };
 
   const handleCerrarCategoriaModal = () => {

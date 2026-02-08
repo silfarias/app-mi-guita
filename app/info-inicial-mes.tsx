@@ -1,16 +1,16 @@
-import { InfoInicialModal } from '@/components/info-inicial-modal';
-import { Header } from '@/components/ui/header';
 import {
   EmptyStateCard,
   ErrorStateCard,
   LoadingStateBlock,
 } from '@/common/components';
+import { Header } from '@/components/ui/header';
 import {
   InfoInicialExplanationBanner,
   InfoInicialMediosPagoList,
   InfoInicialMonthHeader,
   InfoInicialTotalCard,
 } from '@/features/info-inicial/components';
+import { InfoInicialModal } from '@/features/info-inicial/components/info-inicial-modal';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';

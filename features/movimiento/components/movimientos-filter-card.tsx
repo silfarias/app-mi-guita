@@ -1,11 +1,11 @@
-import { CategoriaModal } from '@/components/categoria-modal';
-import { MedioPagoModal } from '@/components/medio-pago-modal';
 import { FormActions, SelectTriggerField } from '@/common/components';
+import { CategoriaModal } from '@/components/categoria-modal';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
-import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
-import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
 import { Categoria } from '@/features/categoria/interfaces/categoria.interface';
+import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { InfoInicialResponse } from '@/features/info-inicial/interfaces/info-inicial.interface';
+import { MedioPagoModal } from '@/features/medio-pago/components/medio-pago-modal';
+import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
 import { MedioPago } from '@/features/medio-pago/interfaces/medio-pago.interface';
 import { MovimientoFiltros, TipoMovimientoEnum } from '@/features/movimiento/interfaces/movimiento.interface';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

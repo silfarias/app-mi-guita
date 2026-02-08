@@ -1,5 +1,3 @@
-import { CategoriaModal } from '@/components/categoria-modal';
-import { MedioPagoModal } from '@/components/medio-pago-modal';
 import {
   DateInputFormField,
   MoneyInputFormField,
@@ -8,9 +6,11 @@ import {
   TextInputFormField,
 } from '@/common/components';
 import { PortalModalForm } from '@/common/forms';
-import { Categoria } from '@/features/categoria/interfaces/categoria.interface';
+import { CategoriaModal } from '@/components/categoria-modal';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
+import { Categoria } from '@/features/categoria/interfaces/categoria.interface';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
+import { MedioPagoModal } from '@/features/medio-pago/components/medio-pago-modal';
 import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
 import { MedioPago } from '@/features/medio-pago/interfaces/medio-pago.interface';
 import {
@@ -26,9 +26,9 @@ import { getCurrentMonth, getCurrentYear } from '@/utils/date';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { Controller } from 'react-hook-form';
-import Toast from 'react-native-toast-message';
 import { View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
+import Toast from 'react-native-toast-message';
 
 const TIPO_OPCIONES = [
   { value: TipoMovimientoEnum.INGRESO, label: 'Ingreso' },

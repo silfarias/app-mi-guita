@@ -6,6 +6,7 @@ import {
 } from '@/common/components';
 import { PaginationBar } from '@/components/pagination-bar';
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
+import { GastoFijoCard } from '@/features/gasto-fijo/components/gasto-fijo-card';
 import { GastoFijoModal } from '@/features/gasto-fijo/components/gasto-fijo-modal';
 import { GastoFijoPagoCard } from '@/features/gasto-fijo/components/gasto-fijo-pago-card';
 import { MontoPagoModal } from '@/features/gasto-fijo/components/monto-pago-modal';
@@ -14,7 +15,7 @@ import {
   usePagosPorInfoInicial,
   useUpdatePagoGastoFijo,
 } from '@/features/gasto-fijo/hooks/pago-gasto-fijo.hook';
-import { useDeleteGastoFijo } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
+import { useDeleteGastoFijo, useMisGastosFijos } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { getCurrentMonth, getCurrentYear } from '@/utils/date';
 import { router } from 'expo-router';
@@ -57,15 +58,30 @@ export default function GastosFijosScreen() {
   const { deleteGastoFijo, loading: deleting } = useDeleteGastoFijo();
   const { update: updatePagoGastoFijo, loading: updatingPago } = useUpdatePagoGastoFijo();
 
+  const {
+    gastosFijos: misGastosFijos,
+    loading: loadingMisGastosFijos,
+    fetchMisGastosFijos,
+  } = useMisGastosFijos();
+
+  const sinInfoInicial = !infoIniciales || infoIniciales.length === 0;
+
   const cargar = useCallback(() => {
     fetchInfoIniciales();
     if (infoInicialId != null) {
       fetchPagosPorInfoInicial();
     }
-  }, [infoInicialId, fetchInfoIniciales, fetchPagosPorInfoInicial]);
+    if (sinInfoInicial) {
+      fetchMisGastosFijos();
+    }
+    // Funciones fetch inestables (nueva ref cada render); solo dependemos de los ids/banderas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infoInicialId, sinInfoInicial]);
 
   useEffect(() => {
     fetchInfoIniciales();
+    // Solo al montar; fetch no estable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -74,6 +90,14 @@ export default function GastosFijosScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [infoInicialId]);
+
+  useEffect(() => {
+    if (sinInfoInicial) {
+      fetchMisGastosFijos();
+    }
+    // Solo cuando cambia sinInfoInicial; omitir fetchMisGastosFijos para evitar bucle (ref inestable).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sinInfoInicial]);
 
   useEffect(() => {
     setPage(0);
@@ -204,8 +228,11 @@ export default function GastosFijosScreen() {
     );
   }
 
-  // Usuario sin info iniciales (nuevo)
-  if (!loadingInfoInicial && (!infoIniciales || infoIniciales.length === 0)) {
+  // Usuario sin info iniciales (nuevo): puede ver sus gastos fijos (solo lectura de pagos) y se le pide configurar info inicial
+  if (!loadingInfoInicial && sinInfoInicial) {
+    const loadingLista = loadingMisGastosFijos;
+    const tieneGastosFijos = misGastosFijos.length > 0;
+
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
@@ -217,15 +244,88 @@ export default function GastosFijosScreen() {
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           refreshControl={
-            <RefreshControl refreshing={loadingInfoInicial} onRefresh={handleRefresh} />
+            <RefreshControl
+              refreshing={loadingInfoInicial || loadingLista}
+              onRefresh={handleRefresh}
+            />
           }
         >
-          <EmptyStateCard
-            icon="repeat"
-            title="No hay gastos fijos"
-            description="Primero configura tu información inicial del mes desde el menú. Luego podrás agregar gastos fijos y marcar si los pagaste."
-          />
+          <View style={styles.advisoryCard}>
+            <Text variant="titleSmall" style={styles.advisoryTitle}>
+              Registra tu información inicial del mes
+            </Text>
+            <Text variant="bodySmall" style={styles.advisoryText}>
+              Para ver el estado de pagos y marcar como pagado cada gasto fijo, configura primero tu información inicial (saldo y medios de pago) del mes actual.
+            </Text>
+            <Button
+              mode="contained"
+              onPress={() => router.push('/(tabs)' as any)}
+              style={styles.configButton}
+            >
+              Configurar información inicial
+            </Button>
+          </View>
+
+          {loadingLista ? (
+            <LoadingStateBlock message="Cargando tus gastos fijos..." />
+          ) : !tieneGastosFijos ? (
+            <EmptyStateCard
+              icon="repeat"
+              title="No hay gastos fijos"
+              description="Agrega tus gastos fijos para verlos aquí. Cuando configures la información inicial del mes, podrás marcar si los pagaste."
+            />
+          ) : (
+            <View style={styles.listContainer}>
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                Tus gastos fijos ({misGastosFijos.length})
+              </Text>
+              <Text variant="bodySmall" style={styles.advisorySubtext}>
+                Para poder gestionar los pagos debes configurar tu información inicial del mes.
+              </Text>
+              {misGastosFijos.map((gastoFijo) => (
+                <GastoFijoCard
+                  key={gastoFijo.id}
+                  gastoFijo={gastoFijo}
+                  onEdit={handleEditarGastoFijo}
+                  onDelete={handleEliminarGastoFijo}
+                  menuVisible={menuVisible === gastoFijo.id}
+                  onMenuOpen={() => setMenuVisible(gastoFijo.id)}
+                  onMenuClose={() => setMenuVisible(null)}
+                  showMenu
+                />
+              ))}
+            </View>
+          )}
         </ScrollView>
+
+        <AddFAB onPress={() => setIsGastoFijoModalVisible(true)} />
+
+        <GastoFijoModal
+          visible={isGastoFijoModalVisible}
+          onDismiss={() => {
+            setIsGastoFijoModalVisible(false);
+            setGastoFijoSeleccionado(null);
+          }}
+          onSuccess={() => {
+            handleRefresh();
+            setGastoFijoSeleccionado(null);
+          }}
+          gastoFijoId={gastoFijoSeleccionado}
+        />
+
+        <ConfirmacionModal
+          visible={isConfirmacionModalVisible}
+          onDismiss={() => {
+            setIsConfirmacionModalVisible(false);
+            setGastoFijoSeleccionado(null);
+          }}
+          onConfirm={confirmarEliminar}
+          title="¿Eliminar gasto fijo?"
+          message="¿Seguro que quieres eliminar este gasto fijo? Esta acción no se puede deshacer."
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          loading={deleting}
+        />
       </View>
     );
   }
@@ -383,9 +483,30 @@ const styles = StyleSheet.create({
     color: '#333333',
   },
   configButton: {
-    marginTop: 16,
+    marginTop: 0,
   },
   addButton: {
     marginTop: 16,
+  },
+  advisoryCard: {
+    backgroundColor: '#FFF8E1',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFE082',
+  },
+  advisoryTitle: {
+    fontWeight: '600',
+    color: '#F57F17',
+    marginBottom: 8,
+  },
+  advisoryText: {
+    color: '#666666',
+    marginBottom: 12,
+  },
+  advisorySubtext: {
+    color: '#666666',
+    marginBottom: 12,
   },
 });

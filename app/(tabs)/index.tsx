@@ -1,19 +1,19 @@
 import { BalanceCard } from '@/components/balance-card';
-import { GastosFijosResumenCard } from '@/components/gastos-fijos-resumen-card';
 import { ComparacionMesAnterior } from '@/components/comparacion-mes-anterior';
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
-import { GastoFijoModal } from '@/features/gasto-fijo/components/gasto-fijo-modal';
+import { GastosFijosResumenCard } from '@/components/gastos-fijos-resumen-card';
 import { GraficoTortaCategorias } from '@/components/grafico-torta-categorias';
-import { InfoInicialModal } from '@/components/info-inicial-modal';
 import { ResumenCards } from '@/components/resumen-cards';
 import { SaldosPorMedioPago } from '@/components/saldos-por-medio-pago';
 import { SideMenu, SideMenuItem } from '@/components/side-menu';
 import { Top5Categorias } from '@/components/top5-categorias';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
+import { GastoFijoModal } from '@/features/gasto-fijo/components/gasto-fijo-modal';
 import {
   useMisGastosFijos,
 } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
 import { usePagosPorInfoInicial } from '@/features/gasto-fijo/hooks/pago-gasto-fijo.hook';
+import { InfoInicialModal } from '@/features/info-inicial/components/info-inicial-modal';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { MovimientoCard } from '@/features/movimiento/components/movimiento-card';
 import { MovimientoModal } from '@/features/movimiento/components/movimiento-modal';

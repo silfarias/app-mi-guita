@@ -1,10 +1,12 @@
 import { Header } from '@/components/ui/header';
 import {
+  GastosFijosHistoricoList,
   MesSelectorCard,
   MovimientosHistoricoList,
   ResumenHistoricoSection,
 } from '@/features/consultas-historicas/components';
 import { getFechasDelMes } from '@/features/consultas-historicas/utils/meses';
+import { usePagosPorInfoInicial } from '@/features/gasto-fijo/hooks/pago-gasto-fijo.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { useMovimientosConFiltros } from '@/features/movimiento/hooks/movimiento.hook';
 import { MovimientoFiltros } from '@/features/movimiento/interfaces/movimiento.interface';
@@ -35,6 +37,12 @@ export default function ConsultasHistoricasScreen() {
   } = useMovimientosConFiltros();
 
   const infoInicialesDisponibles = infoIniciales ?? [];
+  const infoInicialSeleccionado = infoInicialesDisponibles.find(
+    (info) => info.mes === mesSeleccionado && info.anio === anioSeleccionado
+  );
+  const infoInicialId = infoInicialSeleccionado?.id ?? null;
+
+  const { pagos: gastosFijosPagos, fetchPagosPorInfoInicial } = usePagosPorInfoInicial(infoInicialId);
 
   const cargarMovimientos = useCallback(
     (pageNumber: number, size: number) => {
@@ -65,6 +73,13 @@ export default function ConsultasHistoricasScreen() {
   }, [mesSeleccionado, anioSeleccionado]);
 
   useEffect(() => {
+    if (infoInicialId != null) {
+      fetchPagosPorInfoInicial();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infoInicialId]);
+
+  useEffect(() => {
     if (mesSeleccionado && anioSeleccionado) {
       cargarMovimientos(1, pageSize);
       setPage(0);
@@ -79,8 +94,11 @@ export default function ConsultasHistoricasScreen() {
       fetchReporteMensual({ anio: anioSeleccionado, mes: mesSeleccionado });
       cargarMovimientos(1, pageSize);
       setPage(0);
+      if (infoInicialId != null) {
+        fetchPagosPorInfoInicial();
+      }
     }
-  }, [fetchInfoIniciales, fetchReporteMensual, mesSeleccionado, anioSeleccionado, cargarMovimientos, pageSize]);
+  }, [fetchInfoIniciales, fetchReporteMensual, mesSeleccionado, anioSeleccionado, cargarMovimientos, pageSize, infoInicialId, fetchPagosPorInfoInicial]);
 
   const handleSeleccionarMes = (mes: string, anio: number) => {
     setMesSeleccionado(mes);
@@ -154,6 +172,12 @@ export default function ConsultasHistoricasScreen() {
         />
 
         <ResumenHistoricoSection reporte={reporteData ?? null} />
+
+        <GastosFijosHistoricoList
+          pagos={gastosFijosPagos}
+          mesSeleccionado={mesSeleccionado}
+          anioSeleccionado={anioSeleccionado}
+        />
 
         <MovimientosHistoricoList
           movimientos={movimientosDelMes}

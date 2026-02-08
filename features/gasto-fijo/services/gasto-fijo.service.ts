@@ -1,5 +1,9 @@
 import { fetchAuthDelete, fetchAuthGet, fetchAuthPatch, fetchAuthPost } from "@/utils/api-client";
-import { BulkGastoFijoRequest, GastoFijoRequest } from "../interfaces/gasto-fijo-request.interface";
+import {
+  BulkGastoFijoRequest,
+  GastoFijoRequest,
+  GastoFijoUpdateRequest,
+} from "../interfaces/gasto-fijo-request.interface";
 import { GastoFijoResponse } from "../interfaces/gasto-fijo.interface";
 import { GetMisGastosFijosResponse } from "../interfaces/get-mis-gastos-fijos.interface";
 
@@ -20,8 +24,8 @@ export class GastoFijoService {
     );
   }
 
-  async update(token: string, id: string, request: Partial<GastoFijoRequest>): Promise<GastoFijoResponse> {
-    return fetchAuthPatch<GastoFijoResponse, Partial<GastoFijoRequest>>(
+  async update(token: string, id: string, request: GastoFijoUpdateRequest): Promise<GastoFijoResponse> {
+    return fetchAuthPatch<GastoFijoResponse, GastoFijoUpdateRequest>(
       token, `/gasto-fijo/${id}`, request, {
       defaultError: "Error al actualizar el gasto fijo",
     });

@@ -7,7 +7,8 @@ export interface PagoGastoFijoRequest {
 }
 
 export interface PagoLite {
-  id: number;
+  /** Presente si ya existe registro de pago para ese mes; undefined si aún no se creó. */
+  id?: number;
   montoPago: number;
   pagado: boolean;
 }
@@ -23,7 +24,9 @@ export interface PagoGastoFijoResponse {
 export interface GastoFijoEnPago {
   id: number;
   nombre: string;
-  montoFijo: string;
+  /** Backend puede devolver number o string. */
+  montoFijo: string | number;
+  activo?: boolean;
   categoria: Categoria;
 }
 

@@ -1,4 +1,5 @@
 import { BalanceCard } from '@/components/balance-card';
+import { GastosFijosResumenCard } from '@/components/gastos-fijos-resumen-card';
 import { ComparacionMesAnterior } from '@/components/comparacion-mes-anterior';
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
 import { GastoFijoModal } from '@/features/gasto-fijo/components/gasto-fijo-modal';
@@ -9,7 +10,10 @@ import { SaldosPorMedioPago } from '@/components/saldos-por-medio-pago';
 import { SideMenu, SideMenuItem } from '@/components/side-menu';
 import { Top5Categorias } from '@/components/top5-categorias';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
-import { useMisGastosFijos } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
+import {
+  useMisGastosFijos,
+} from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
+import { usePagosPorInfoInicial } from '@/features/gasto-fijo/hooks/pago-gasto-fijo.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { MovimientoCard } from '@/features/movimiento/components/movimiento-card';
 import { MovimientoModal } from '@/features/movimiento/components/movimiento-modal';
@@ -48,6 +52,15 @@ export default function HomeScreen() {
   const currentMonth = getCurrentMonth();
   const currentYear = getCurrentYear();
 
+  // Verificar si hay info inicial para el mes actual
+  const infoInicialDelMes = infoIniciales?.find(
+    (info) => info.mes === currentMonth && info.anio === currentYear
+  );
+  const infoInicialId = infoInicialDelMes?.id ?? null;
+  const tieneInfoInicial = !!infoInicialDelMes;
+
+  const { pagos: gastosFijosPagos, fetchPagosPorInfoInicial } = usePagosPorInfoInicial(infoInicialId);
+
   // Cargar datos al montar el componente
   useEffect(() => {
     fetchMovimientos();
@@ -56,11 +69,12 @@ export default function HomeScreen() {
     fetchMisGastosFijos();
   }, []);
 
-  // Verificar si hay info inicial para el mes actual
-  const infoInicialDelMes = infoIniciales?.find(
-    (info) => info.mes === currentMonth && info.anio === currentYear
-  );
-  const tieneInfoInicial = !!infoInicialDelMes;
+  useEffect(() => {
+    if (infoInicialId != null) {
+      fetchPagosPorInfoInicial();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infoInicialId]);
   
   // Verificar si tiene gastos fijos
   const tieneGastosFijos = gastosFijosData?.gastosFijos && gastosFijosData.gastosFijos.length > 0;
@@ -171,6 +185,11 @@ export default function HomeScreen() {
   const handleRefresh = () => {
     fetchMovimientos();
     fetchReporteMensual({ anio: currentYear, mes: currentMonth });
+    if (infoInicialId != null) {
+      fetchPagosPorInfoInicial();
+    }
+    fetchMisGastosFijos();
+    fetchInfoIniciales();
   };
 
   const isLoading = movimientosLoading || reporteLoading;
@@ -269,6 +288,14 @@ export default function HomeScreen() {
 
                 {/* Balance Total */}
                 <BalanceCard balanceTotal={reporteData.balanceTotal} balanceMes={reporteData.balance} />
+
+                {/* Gastos fijos resumen */}
+                {gastosFijosPagos.length > 0 && (
+                  <GastosFijosResumenCard
+                    pagados={gastosFijosPagos.filter((p) => p.pago.pagado).length}
+                    total={gastosFijosPagos.length}
+                  />
+                )}
 
                 {/* Comparación con Mes Anterior */}
                 {reporteData.comparacionMesAnterior && (

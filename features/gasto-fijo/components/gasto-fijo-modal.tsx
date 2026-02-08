@@ -15,13 +15,14 @@ import {
 import {
   BulkGastoFijoRequest,
   GastoFijoRequest,
+  GastoFijoUpdateRequest,
 } from '@/features/gasto-fijo/interfaces/gasto-fijo-request.interface';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import Toast from 'react-native-toast-message';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Switch, Text } from 'react-native-paper';
 
 interface GastoFijoItemForm {
   nombre: string;
@@ -96,6 +97,7 @@ export function GastoFijoModal({
   const [categoriaModalVisible, setCategoriaModalVisible] = useState(false);
   const [activeCategoriaIndex, setActiveCategoriaIndex] = useState<number | null>(null);
   const [selectedCategoriaByIndex, setSelectedCategoriaByIndex] = useState<Record<number, Categoria>>({});
+  const [activo, setActivo] = useState(true);
 
   useEffect(() => {
     if (visible && isEditMode && gastoFijoId) {
@@ -114,7 +116,7 @@ export function GastoFijoModal({
       const montoNum =
         gastoFijoData.montoFijo == null || gastoFijoData.montoFijo === ''
           ? 0
-          : parseFloat(gastoFijoData.montoFijo) || 0;
+          : parseFloat(String(gastoFijoData.montoFijo)) || 0;
       replace([
         {
           nombre: gastoFijoData.nombre,
@@ -123,6 +125,7 @@ export function GastoFijoModal({
         },
       ]);
       setSelectedCategoriaByIndex({ 0: gastoFijoData.categoria });
+      setActivo(gastoFijoData.activo ?? true);
     }
   }, [gastoFijoData, isEditMode, visible, replace]);
 
@@ -132,6 +135,7 @@ export function GastoFijoModal({
       setSelectedCategoriaByIndex({});
       setActiveCategoriaIndex(null);
       setCategoriaModalVisible(false);
+      setActivo(true);
       resetCreate();
       resetUpdate();
     }
@@ -160,10 +164,11 @@ export function GastoFijoModal({
         return;
       }
       try {
-        const payload: Partial<GastoFijoRequest> = {
+        const payload: GastoFijoUpdateRequest = {
           nombre: primerItem.nombre.trim(),
           montoFijo: primerItem.montoFijo ?? 0,
           categoriaId: primerItem.categoriaId,
+          activo,
         };
         await update(gastoFijoId, payload);
         Toast.show({
@@ -372,6 +377,19 @@ export function GastoFijoModal({
                 Si desconoces el monto o no es fijo, puedes dejarlo en 0 y registrarlo cuando
                 realices el pago.
               </Text>
+              {isEditMode && index === 0 && (
+                <View style={styles.activoRow}>
+                  <Text variant="bodyLarge" style={styles.activoLabel}>
+                    Activo
+                  </Text>
+                  <Switch
+                    value={activo}
+                    onValueChange={setActivo}
+                    color="#6CB4EE"
+                    disabled={loading}
+                  />
+                </View>
+              )}
             </View>
           ))
       )}
@@ -468,5 +486,18 @@ const styles = StyleSheet.create({
     color: '#666666',
     fontSize: 12,
     fontStyle: 'italic',
+  },
+  activoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  activoLabel: {
+    color: '#333333',
+    fontWeight: '500',
   },
 });

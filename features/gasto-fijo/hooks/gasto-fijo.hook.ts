@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useAsyncRun } from '../../../hooks/use-async-run';
 import { useAuthStore } from '../../../store/auth.store';
-import { BulkGastoFijoRequest, GastoFijoRequest } from '../interfaces/gasto-fijo-request.interface';
+import {
+  BulkGastoFijoRequest,
+  GastoFijoRequest,
+  GastoFijoUpdateRequest,
+} from '../interfaces/gasto-fijo-request.interface';
 import { GastoFijoResponse } from '../interfaces/gasto-fijo.interface';
 import { GetMisGastosFijosResponse } from '../interfaces/get-mis-gastos-fijos.interface';
 import { GastoFijoService } from '../services/gasto-fijo.service';
@@ -148,7 +152,7 @@ export function useUpdateGastoFijo() {
   const { loading, error, setError, run } = useAsyncRun();
   const [data, setData] = useState<GastoFijoResponse | null>(null);
 
-  const update = async (id: string | number, request: Partial<GastoFijoRequest>) => {
+  const update = async (id: string | number, request: GastoFijoUpdateRequest) => {
     if (!accessToken) {
       setError('No hay sesión activa');
       return;

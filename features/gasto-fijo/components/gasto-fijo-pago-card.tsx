@@ -29,9 +29,14 @@ export function GastoFijoPagoCard({
   pagadoDisabled = false,
 }: GastoFijoPagoCardProps) {
   const { gastoFijo, pago } = item;
+  const montoFijoVal = gastoFijo.montoFijo;
   const monto =
-    gastoFijo.montoFijo === null || gastoFijo.montoFijo === undefined || gastoFijo.montoFijo === ''
-      ? gastoFijo.montoFijo = "0.00" : gastoFijo.montoFijo;
+    montoFijoVal === null || montoFijoVal === undefined || montoFijoVal === ''
+      ? pago.montoPago
+      : typeof montoFijoVal === 'string'
+        ? parseFloat(montoFijoVal) || pago.montoPago
+        : montoFijoVal;
+  const tienePagoId = pago.id != null;
 
   const menuActions = [
     ...(onEdit
@@ -59,7 +64,7 @@ export function GastoFijoPagoCard({
   ];
 
   const handleTogglePagado = () => {
-    if (onTogglePagado && !pagadoDisabled) {
+    if (onTogglePagado && !pagadoDisabled && tienePagoId) {
       onTogglePagado(item, !pago.pagado);
     }
   };
@@ -75,9 +80,18 @@ export function GastoFijoPagoCard({
               size={48}
             />
             <View style={styles.info}>
-              <Text variant="titleMedium" style={styles.nombre}>
-                {gastoFijo.nombre}
-              </Text>
+              <View style={styles.nombreRow}>
+                <Text variant="titleMedium" style={styles.nombre}>
+                  {gastoFijo.nombre}
+                </Text>
+                {gastoFijo.activo === false && (
+                  <View style={styles.inactivoBadge}>
+                    <Text variant="labelSmall" style={styles.inactivoText}>
+                      Inactivo
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text variant="bodySmall" style={styles.categoria}>
                 {gastoFijo.categoria.nombre}
               </Text>
@@ -104,7 +118,7 @@ export function GastoFijoPagoCard({
         </View>
         <TouchableOpacity
           onPress={handleTogglePagado}
-          disabled={pagadoDisabled}
+          disabled={pagadoDisabled || !tienePagoId}
           style={styles.pagadoRow}
           activeOpacity={0.7}
         >
@@ -114,7 +128,7 @@ export function GastoFijoPagoCard({
           <Checkbox
             status={pago.pagado ? 'checked' : 'unchecked'}
             onPress={handleTogglePagado}
-            disabled={pagadoDisabled}
+            disabled={pagadoDisabled || !tienePagoId}
             color="#6CB4EE"
           />
         </TouchableOpacity>
@@ -144,10 +158,26 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
   },
+  nombreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   nombre: {
     fontWeight: '600',
     color: '#333333',
-    marginBottom: 4,
+    flex: 1,
+  },
+  inactivoBadge: {
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  inactivoText: {
+    color: '#E65100',
+    fontWeight: '600',
   },
   categoria: {
     color: '#666666',

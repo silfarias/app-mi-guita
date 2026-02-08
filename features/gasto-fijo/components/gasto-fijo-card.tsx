@@ -66,9 +66,18 @@ export function GastoFijoCard({
               size={48}
             />
             <View style={styles.info}>
-              <Text variant="titleMedium" style={styles.nombre}>
-                {gastoFijo.nombre}
-              </Text>
+              <View style={styles.nombreRow}>
+                <Text variant="titleMedium" style={styles.nombre}>
+                  {gastoFijo.nombre}
+                </Text>
+                {gastoFijo.activo === false && (
+                  <View style={styles.inactivoBadge}>
+                    <Text variant="labelSmall" style={styles.inactivoText}>
+                      Inactivo
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text variant="bodySmall" style={styles.categoria}>
                 {gastoFijo.categoria.nombre}
               </Text>
@@ -119,10 +128,26 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
   },
+  nombreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   nombre: {
     fontWeight: '600',
     color: '#333333',
-    marginBottom: 4,
+    flex: 1,
+  },
+  inactivoBadge: {
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  inactivoText: {
+    color: '#E65100',
+    fontWeight: '600',
   },
   categoria: {
     color: '#666666',

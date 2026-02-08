@@ -102,6 +102,7 @@ export default function GastosFijosScreen() {
   };
 
   const handleTogglePagado = (item: PagoGastoFijoPorGastoFijoResponse, pagado: boolean) => {
+    if (item.pago.id == null) return;
     if (pagado) {
       const montoFijo = getMontoFijo(item);
       if (montoFijo <= 0) {
@@ -135,7 +136,7 @@ export default function GastosFijosScreen() {
   };
 
   const handleConfirmMontoPago = async (monto: number) => {
-    if (!itemParaMarcarPagado) return;
+    if (!itemParaMarcarPagado || itemParaMarcarPagado.pago.id == null) return;
     await ejecutarUpdatePago(itemParaMarcarPagado.pago.id, monto, true);
     setItemParaMarcarPagado(null);
   };

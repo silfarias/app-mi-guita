@@ -140,20 +140,42 @@ export default function GastosFijosScreen() {
     if (item.pago.id == null) return;
     if (pagado) {
       const montoFijo = getMontoFijo(item);
-      if (montoFijo <= 0) {
+      const montoPagoActual = item.pago.montoPago ?? 0;
+      
+      // Si el gasto NO tiene monto fijo (o es 0) y el pago está en 0, pedir monto al usuario
+      if ((!montoFijo || montoFijo === 0) && montoPagoActual === 0) {
         setItemParaMarcarPagado(item);
         setIsMontoPagoModalVisible(true);
         return;
       }
-      ejecutarUpdatePago(item.pago.id, montoFijo, true);
+      
+      // Si el gasto tiene montoFijo > 0 y el pago está en 0, solo enviar { pagado: true }
+      // El backend usará automáticamente montoFijo como montoPago
+      ejecutarUpdatePago(item.pago.id, montoPagoActual, true, montoFijo);
     } else {
       ejecutarUpdatePago(item.pago.id, item.pago.montoPago, false);
     }
   };
 
-  const ejecutarUpdatePago = async (pagoId: number, montoPago: number, pagado: boolean) => {
+  const ejecutarUpdatePago = async (
+    pagoId: number,
+    montoPago: number,
+    pagado: boolean,
+    montoFijo?: number
+  ) => {
     try {
-      await updatePagoGastoFijo(pagoId, { montoPago, pagado });
+      // Si se marca como pagado, montoFijo > 0 y montoPago === 0, solo enviar pagado: true
+      // El backend completará automáticamente el montoPago con montoFijo
+      const body: { pagado: boolean; montoPago?: number } = { pagado };
+      
+      if (pagado && montoFijo && montoFijo > 0 && montoPago === 0) {
+        // No enviar montoPago, el backend lo completa automáticamente
+      } else {
+        // En otros casos, enviar el montoPago
+        body.montoPago = montoPago;
+      }
+      
+      await updatePagoGastoFijo(pagoId, body);
       Toast.show({
         type: 'success',
         text1: pagado ? 'Marcado como pagado' : 'Marcado como pendiente',

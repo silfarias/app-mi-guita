@@ -17,6 +17,7 @@ export function useResumenPagoGastoFijo(infoInicialId: number | null | undefined
       if (!accessToken) setError('No hay sesión activa');
       return;
     }
+    setError(null); // Limpiar errores previos
     await run(
       async () => {
         const response = await resumenPagoGastoFijoService.getPorInfoInicial(
@@ -24,6 +25,9 @@ export function useResumenPagoGastoFijo(infoInicialId: number | null | undefined
           infoInicialId
         );
         setData(response);
+        if (response === null) {
+          setError(null); // Si no hay resumen, no es un error
+        }
         return response;
       },
       {

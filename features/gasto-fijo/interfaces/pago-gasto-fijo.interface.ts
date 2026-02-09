@@ -2,7 +2,8 @@ import { Categoria } from "@/features/categoria/interfaces/categoria.interface";
 import { InfoInicialResponse } from "@/features/info-inicial/interfaces/info-inicial.interface";
 
 export interface PagoGastoFijoRequest {
-  montoPago: number;
+  /** Opcional: si no se envía y el gasto tiene montoFijo > 0, el backend usa montoFijo automáticamente. */
+  montoPago?: number;
   pagado: boolean;
 }
 

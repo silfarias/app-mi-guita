@@ -17,11 +17,14 @@ import {
 } from '@/features/gasto-fijo/hooks/pago-gasto-fijo.hook';
 import { useDeleteGastoFijo, useMisGastosFijos } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
+import { useResumenPagoGastoFijo } from '@/features/resumen-pago-gasto-fijo/hooks/resumen-pago-gasto-fijo.hook';
+import { formatCurrency } from '@/utils/currency';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getCurrentMonth, getCurrentYear } from '@/utils/date';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { Button, Card, ProgressBar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
@@ -64,12 +67,19 @@ export default function GastosFijosScreen() {
     fetchMisGastosFijos,
   } = useMisGastosFijos();
 
+  const {
+    data: resumenData,
+    loading: loadingResumen,
+    fetchResumen,
+  } = useResumenPagoGastoFijo(infoInicialId);
+
   const sinInfoInicial = !infoIniciales || infoIniciales.length === 0;
 
   const cargar = useCallback(() => {
     fetchInfoIniciales();
     if (infoInicialId != null) {
       fetchPagosPorInfoInicial();
+      fetchResumen();
     }
     if (sinInfoInicial) {
       fetchMisGastosFijos();
@@ -87,6 +97,7 @@ export default function GastosFijosScreen() {
   useEffect(() => {
     if (infoInicialId != null) {
       fetchPagosPorInfoInicial();
+      fetchResumen();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [infoInicialId]);
@@ -150,6 +161,7 @@ export default function GastosFijosScreen() {
         visibilityTime: 2000,
       });
       fetchPagosPorInfoInicial();
+      fetchResumen();
     } catch {
       Toast.show({
         type: 'error',
@@ -371,6 +383,47 @@ export default function GastosFijosScreen() {
           </>
         ) : (
           <>
+            <Card style={styles.resumenCard}>
+              <Card.Content>
+                <View style={styles.resumenHeader}>
+                  <MaterialCommunityIcons name="repeat" size={24} color="#6CB4EE" />
+                  <Text variant="titleMedium" style={styles.resumenTitle}>
+                    Resumen del mes
+                  </Text>
+                </View>
+                {loadingResumen ? (
+                  <Text variant="bodyMedium" style={styles.resumenLoading}>
+                    Cargando resumen...
+                  </Text>
+                ) : resumenData ? (
+                  <>
+                    <Text variant="bodyLarge" style={styles.resumenTexto}>
+                      Cuentas pagadas: {resumenData.cantidadGastosPagados} de {resumenData.cantidadGastosTotales}
+                    </Text>
+                    <View style={styles.resumenMontos}>
+                      <Text variant="bodySmall" style={styles.resumenMontoLabel}>
+                        Pagado: {formatCurrency(parseFloat(resumenData.montoPagado) || 0)}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.resumenMontoLabel}>
+                        Total: {formatCurrency(parseFloat(resumenData.montoTotal) || 0)}
+                      </Text>
+                    </View>
+                    {resumenData.montoPendiente > 0 && (
+                      <Text variant="bodySmall" style={styles.resumenPendiente}>
+                        {formatCurrency(resumenData.montoPendiente)} pendiente
+                      </Text>
+                    )}
+                    <View style={styles.resumenProgressContainer}>
+                      <ProgressBar
+                        progress={(resumenData.porcentajePagado ?? 0) / 100}
+                        color="#6CB4EE"
+                        style={styles.resumenProgressBar}
+                      />
+                    </View>
+                  </>
+                ) : null}
+              </Card.Content>
+            </Card>
             <View style={styles.listContainer}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 Gastos Fijos Mensuales ({totalPagos})
@@ -473,6 +526,55 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 16,
     paddingBottom: 32,
+  },
+  resumenCard: {
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: '#6CB4EE',
+  },
+  resumenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  resumenTitle: {
+    fontWeight: '600',
+    color: '#333333',
+  },
+  resumenLoading: {
+    color: '#666666',
+    marginBottom: 8,
+  },
+  resumenTexto: {
+    color: '#333333',
+    marginBottom: 4,
+  },
+  resumenMontos: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 4,
+  },
+  resumenMontoLabel: {
+    color: '#666666',
+  },
+  resumenPendiente: {
+    color: '#E74C3C',
+    marginBottom: 12,
+  },
+  resumenProgressContainer: {
+    marginTop: 4,
+    marginBottom: 4,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  resumenProgressBar: {
+    height: 6,
+    borderRadius: 4,
+    backgroundColor: '#E3F2FD',
   },
   listContainer: {
     marginTop: 8,

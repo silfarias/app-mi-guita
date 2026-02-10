@@ -4,23 +4,23 @@ import {
   ErrorStateCard,
   LoadingStateBlock,
 } from '@/common/components';
-import { PaginationBar } from '@/components/pagination-bar';
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
+import { PaginationBar } from '@/components/pagination-bar';
 import { GastoFijoCard } from '@/features/gasto-fijo/components/gasto-fijo-card';
 import { GastoFijoModal } from '@/features/gasto-fijo/components/gasto-fijo-modal';
 import { GastoFijoPagoCard } from '@/features/gasto-fijo/components/gasto-fijo-pago-card';
 import { MontoPagoModal } from '@/features/gasto-fijo/components/monto-pago-modal';
-import { PagoGastoFijoPorGastoFijoResponse } from '@/features/gasto-fijo/interfaces/pago-gasto-fijo.interface';
+import { useDeleteGastoFijo, useMisGastosFijos } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
 import {
   usePagosPorInfoInicial,
   useUpdatePagoGastoFijo,
 } from '@/features/gasto-fijo/hooks/pago-gasto-fijo.hook';
-import { useDeleteGastoFijo, useMisGastosFijos } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
+import { PagoGastoFijoPorGastoFijoResponse } from '@/features/gasto-fijo/interfaces/pago-gasto-fijo.interface';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
 import { useResumenPagoGastoFijo } from '@/features/resumen-pago-gasto-fijo/hooks/resumen-pago-gasto-fijo.hook';
 import { formatCurrency } from '@/utils/currency';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getCurrentMonth, getCurrentYear } from '@/utils/date';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
@@ -141,19 +141,27 @@ export default function GastosFijosScreen() {
     if (pagado) {
       const montoFijo = getMontoFijo(item);
       const montoPagoActual = item.pago.montoPago ?? 0;
-      
-      // Si el gasto NO tiene monto fijo (o es 0) y el pago está en 0, pedir monto al usuario
-      if ((!montoFijo || montoFijo === 0) && montoPagoActual === 0) {
+      const esDebitoAutomatico = item.gastoFijo.esDebitoAutomatico && item.gastoFijo.medioPago;
+
+      // Débito automático: usar medio de pago del gasto fijo y monto fijo (sin abrir modal cuando hay monto)
+      if (esDebitoAutomatico) {
+        const medioPagoId = item.gastoFijo.medioPago!.id;
+        const monto = montoFijo > 0 ? montoFijo : montoPagoActual;
+        if (monto > 0) {
+          ejecutarUpdatePago(item.pago.id, monto, true, medioPagoId);
+          return;
+        }
+        // Débito automático pero monto 0: abrir modal solo para monto (medio ya está)
         setItemParaMarcarPagado(item);
         setIsMontoPagoModalVisible(true);
         return;
       }
-      
-      // Si el gasto tiene montoFijo > 0 y el pago está en 0, solo enviar { pagado: true }
-      // El backend usará automáticamente montoFijo como montoPago
-      ejecutarUpdatePago(item.pago.id, montoPagoActual, true, montoFijo);
+
+      // No es débito automático: siempre abrir modal para monto y medio de pago
+      setItemParaMarcarPagado(item);
+      setIsMontoPagoModalVisible(true);
     } else {
-      ejecutarUpdatePago(item.pago.id, item.pago.montoPago, false);
+      ejecutarUpdatePago(item.pago.id, item.pago.montoPago ?? 0, false);
     }
   };
 
@@ -161,20 +169,16 @@ export default function GastosFijosScreen() {
     pagoId: number,
     montoPago: number,
     pagado: boolean,
-    montoFijo?: number
+    medioPagoId?: number
   ) => {
     try {
-      // Si se marca como pagado, montoFijo > 0 y montoPago === 0, solo enviar pagado: true
-      // El backend completará automáticamente el montoPago con montoFijo
-      const body: { pagado: boolean; montoPago?: number } = { pagado };
-      
-      if (pagado && montoFijo && montoFijo > 0 && montoPago === 0) {
-        // No enviar montoPago, el backend lo completa automáticamente
-      } else {
-        // En otros casos, enviar el montoPago
-        body.montoPago = montoPago;
+      const body: { pagado: boolean; montoPago: number; medioPagoId?: number } = {
+        pagado,
+        montoPago: pagado ? Math.max(montoPago, 0.01) : Math.max(montoPago, 0),
+      };
+      if (pagado && medioPagoId != null && medioPagoId > 0) {
+        body.medioPagoId = medioPagoId;
       }
-      
       await updatePagoGastoFijo(pagoId, body);
       Toast.show({
         type: 'success',
@@ -193,9 +197,12 @@ export default function GastosFijosScreen() {
     }
   };
 
-  const handleConfirmMontoPago = async (monto: number) => {
+  const handleConfirmMontoPago = async (monto: number, medioPagoId?: number) => {
     if (!itemParaMarcarPagado || itemParaMarcarPagado.pago.id == null) return;
-    await ejecutarUpdatePago(itemParaMarcarPagado.pago.id, monto, true);
+    const id = itemParaMarcarPagado.pago.id;
+    const esDebito = itemParaMarcarPagado.gastoFijo.esDebitoAutomatico && itemParaMarcarPagado.gastoFijo.medioPago;
+    const medioId = esDebito ? itemParaMarcarPagado.gastoFijo.medioPago!.id : medioPagoId;
+    await ejecutarUpdatePago(id, monto, true, medioId);
     setItemParaMarcarPagado(null);
   };
 
@@ -517,6 +524,15 @@ export default function GastosFijosScreen() {
         onConfirm={handleConfirmMontoPago}
         gastoNombre={itemParaMarcarPagado?.gastoFijo.nombre ?? ''}
         loading={updatingPago}
+        requireMedioPago={!itemParaMarcarPagado?.gastoFijo.esDebitoAutomatico}
+        medioPagoAsociado={
+          itemParaMarcarPagado?.gastoFijo.esDebitoAutomatico && itemParaMarcarPagado?.gastoFijo.medioPago
+            ? {
+                id: itemParaMarcarPagado.gastoFijo.medioPago!.id,
+                nombre: itemParaMarcarPagado.gastoFijo.medioPago!.nombre,
+              }
+            : undefined
+        }
       />
     </View>
   );

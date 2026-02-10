@@ -17,6 +17,9 @@ import {
   GastoFijoRequest,
   GastoFijoUpdateRequest,
 } from '@/features/gasto-fijo/interfaces/gasto-fijo-request.interface';
+import { MedioPago } from '@/features/medio-pago/interfaces/medio-pago.interface';
+import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
+import { MedioPagoModal } from '@/features/medio-pago/components/medio-pago-modal';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
@@ -28,6 +31,8 @@ interface GastoFijoItemForm {
   nombre: string;
   montoFijo: number;
   categoriaId: number | null;
+  esDebitoAutomatico: boolean;
+  medioPagoId: number | null;
 }
 
 interface GastoFijoBulkFormValues {
@@ -80,11 +85,14 @@ export function GastoFijoModal({
   const {
     control,
     handleSubmit,
+    watch,
     formState: { errors },
     reset: resetForm,
   } = useForm<GastoFijoBulkFormValues>({
     defaultValues: {
-      gastosFijos: [{ nombre: '', montoFijo: 0, categoriaId: null }],
+      gastosFijos: [
+        { nombre: '', montoFijo: 0, categoriaId: null, esDebitoAutomatico: false, medioPagoId: null },
+      ],
     },
     mode: 'onSubmit',
   });
@@ -98,6 +106,17 @@ export function GastoFijoModal({
   const [activeCategoriaIndex, setActiveCategoriaIndex] = useState<number | null>(null);
   const [selectedCategoriaByIndex, setSelectedCategoriaByIndex] = useState<Record<number, Categoria>>({});
   const [activo, setActivo] = useState(true);
+  const [medioPagoModalVisible, setMedioPagoModalVisible] = useState(false);
+  const [activeMedioPagoIndex, setActiveMedioPagoIndex] = useState<number | null>(null);
+  const [selectedMedioPagoByIndex, setSelectedMedioPagoByIndex] = useState<Record<number, MedioPago>>({});
+
+  const { data: mediosPago, fetchMediosPago } = useMediosPago();
+
+  useEffect(() => {
+    if (visible) {
+      fetchMediosPago();
+    }
+  }, [visible]);
 
   useEffect(() => {
     if (visible && isEditMode && gastoFijoId) {
@@ -122,19 +141,39 @@ export function GastoFijoModal({
           nombre: gastoFijoData.nombre,
           montoFijo: montoNum,
           categoriaId: gastoFijoData.categoria.id,
+          esDebitoAutomatico: gastoFijoData.esDebitoAutomatico ?? false,
+          medioPagoId: gastoFijoData.medioPago?.id ?? null,
         },
       ]);
       setSelectedCategoriaByIndex({ 0: gastoFijoData.categoria });
+      if (gastoFijoData.medioPago) {
+        setSelectedMedioPagoByIndex({ 0: gastoFijoData.medioPago });
+      } else {
+        setSelectedMedioPagoByIndex({});
+      }
       setActivo(gastoFijoData.activo ?? true);
     }
   }, [gastoFijoData, isEditMode, visible, replace]);
 
   useEffect(() => {
     if (!visible) {
-      resetForm({ gastosFijos: [{ nombre: '', montoFijo: 0, categoriaId: null }] });
+      resetForm({
+        gastosFijos: [
+          {
+            nombre: '',
+            montoFijo: 0,
+            categoriaId: null,
+            esDebitoAutomatico: false,
+            medioPagoId: null,
+          },
+        ],
+      });
       setSelectedCategoriaByIndex({});
+      setSelectedMedioPagoByIndex({});
       setActiveCategoriaIndex(null);
+      setActiveMedioPagoIndex(null);
       setCategoriaModalVisible(false);
+      setMedioPagoModalVisible(false);
       setActivo(true);
       resetCreate();
       resetUpdate();
@@ -149,7 +188,20 @@ export function GastoFijoModal({
       });
       return next;
     });
-    prepend({ nombre: '', montoFijo: 0, categoriaId: null });
+    setSelectedMedioPagoByIndex((prev) => {
+      const next: Record<number, MedioPago> = {};
+      Object.entries(prev).forEach(([k, v]) => {
+        next[Number(k) + 1] = v;
+      });
+      return next;
+    });
+    prepend({
+      nombre: '',
+      montoFijo: 0,
+      categoriaId: null,
+      esDebitoAutomatico: false,
+      medioPagoId: null,
+    });
   };
 
   const handleCerrarCategoriaModal = () => {
@@ -170,12 +222,24 @@ export function GastoFijoModal({
         });
         return;
       }
+      if (primerItem.esDebitoAutomatico && (!primerItem.medioPagoId || primerItem.medioPagoId <= 0)) {
+        Toast.show({
+          type: 'error',
+          text1: 'Débito automático',
+          text2: 'Selecciona el medio de pago por el que se realiza el cobro (no puede ser efectivo)',
+          position: 'top',
+          visibilityTime: 3000,
+        });
+        return;
+      }
       try {
         const payload: GastoFijoUpdateRequest = {
           nombre: primerItem.nombre.trim(),
           montoFijo: primerItem.montoFijo ?? 0,
           categoriaId: primerItem.categoriaId,
           activo,
+          esDebitoAutomatico: primerItem.esDebitoAutomatico,
+          medioPagoId: primerItem.esDebitoAutomatico ? primerItem.medioPagoId ?? undefined : undefined,
         };
         await update(gastoFijoId, payload);
         Toast.show({
@@ -193,13 +257,30 @@ export function GastoFijoModal({
       return;
     }
 
-    const gastosFijosFiltrados = data.gastosFijos
-      .filter((gf) => gf.nombre.trim() !== '' && gf.categoriaId != null && gf.categoriaId > 0)
-      .map((gf) => ({
-        nombre: gf.nombre.trim(),
-        montoFijo: gf.montoFijo ?? 0,
-        categoriaId: gf.categoriaId!,
-      }));
+    const itemsValidos = data.gastosFijos.filter(
+      (gf) => gf.nombre.trim() !== '' && gf.categoriaId != null && gf.categoriaId > 0
+    );
+    const algunoDebitoSinMedio = itemsValidos.some(
+      (gf) => gf.esDebitoAutomatico && (!gf.medioPagoId || gf.medioPagoId <= 0)
+    );
+    if (algunoDebitoSinMedio) {
+      Toast.show({
+        type: 'error',
+        text1: 'Débito automático',
+        text2: 'Si el gasto es débito automático, selecciona el medio de pago del cobro (no puede ser efectivo)',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+      return;
+    }
+    const gastosFijosFiltrados: GastoFijoRequest[] = itemsValidos.map((gf) => ({
+      nombre: gf.nombre.trim(),
+      montoFijo: gf.montoFijo ?? 0,
+      categoriaId: gf.categoriaId!,
+      esDebitoAutomatico: gf.esDebitoAutomatico ?? false,
+      medioPagoId:
+        gf.esDebitoAutomatico && gf.medioPagoId && gf.medioPagoId > 0 ? gf.medioPagoId : undefined,
+    }));
 
     if (gastosFijosFiltrados.length === 0) {
       Toast.show({
@@ -384,6 +465,90 @@ export function GastoFijoModal({
                 Si desconoces el monto o no es fijo, puedes dejarlo en 0 y registrarlo cuando
                 realices el pago.
               </Text>
+
+              <Controller
+                control={control}
+                name={`gastosFijos.${index}.esDebitoAutomatico`}
+                render={({ field: { value, onChange } }) => (
+                  <View style={styles.debitoRow}>
+                    <Text variant="bodyLarge" style={styles.debitoLabel}>
+                      Débito automático (se cobra solo)
+                    </Text>
+                    <Switch
+                      value={value}
+                      onValueChange={(v) => {
+                        onChange(v);
+                        if (!v) {
+                          setSelectedMedioPagoByIndex((prev) => {
+                            const next = { ...prev };
+                            delete next[index];
+                            return next;
+                          });
+                        }
+                      }}
+                      color="#6CB4EE"
+                      disabled={loading}
+                    />
+                  </View>
+                )}
+              />
+              <Controller
+                control={control}
+                name={`gastosFijos.${index}.medioPagoId`}
+                render={({ field: { value, onChange } }) => {
+                  const esDebito = watch(`gastosFijos.${index}.esDebitoAutomatico`);
+                  const medio = selectedMedioPagoByIndex[index] ?? mediosPago?.find((m) => m.id === value);
+                  if (!esDebito) return <View />;
+                  return (
+                    <>
+                      <SelectTriggerField
+                        label="Medio de pago del cobro"
+                        placeholder="Seleccionar medio (no efectivo)"
+                        selectedContent={
+                          medio ? (
+                            <View style={selectItemRow}>
+                              <MaterialCommunityIcons
+                                name={medio.tipo === 'BANCO' ? 'bank' : 'wallet'}
+                                size={20}
+                                color="#6CB4EE"
+                                style={selectItemIcon}
+                              />
+                              <Text variant="bodyMedium" style={{ color: '#333333', fontWeight: '500' }}>
+                                {medio.nombre}
+                              </Text>
+                            </View>
+                          ) : undefined
+                        }
+                        onPress={() => {
+                          setActiveMedioPagoIndex(index);
+                          setMedioPagoModalVisible(true);
+                        }}
+                        error={errors.gastosFijos?.[index]?.medioPagoId?.message}
+                        disabled={loading}
+                      />
+                      {activeMedioPagoIndex === index && (
+                        <MedioPagoModal
+                          visible={medioPagoModalVisible}
+                          onDismiss={() => {
+                            setMedioPagoModalVisible(false);
+                            setActiveMedioPagoIndex(null);
+                          }}
+                          onSelect={(m) => {
+                            onChange(m.id);
+                            setSelectedMedioPagoByIndex((prev) => ({ ...prev, [index]: m }));
+                            setMedioPagoModalVisible(false);
+                            setActiveMedioPagoIndex(null);
+                          }}
+                          selectedValue={value ?? undefined}
+                          disabled={loading}
+                          excludeEfectivo
+                        />
+                      )}
+                    </>
+                  );
+                }}
+              />
+
               {isEditMode && index === 0 && (
                 <View style={styles.activoRow}>
                   <Text variant="bodyLarge" style={styles.activoLabel}>
@@ -493,6 +658,20 @@ const styles = StyleSheet.create({
     color: '#666666',
     fontSize: 12,
     fontStyle: 'italic',
+  },
+  debitoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  debitoLabel: {
+    color: '#333333',
+    fontWeight: '500',
+    flex: 1,
   },
   activoRow: {
     flexDirection: 'row',

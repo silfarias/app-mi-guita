@@ -21,6 +21,8 @@ interface MedioPagoModalProps {
   onSelect: (medio: MedioPago) => void;
   selectedValue?: number;
   disabled?: boolean;
+  /** Si es true, excluye medios cuyo nombre contenga "efectivo" (ej. débito automático no puede ser efectivo). */
+  excludeEfectivo?: boolean;
 }
 
 export function MedioPagoModal({
@@ -29,6 +31,7 @@ export function MedioPagoModal({
   onSelect,
   selectedValue,
   disabled = false,
+  excludeEfectivo = false,
 }: MedioPagoModalProps) {
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoMedioPago | 'TODOS'>('TODOS');
   const { data: mediosPago, loading: mediosPagoLoading, fetchMediosPago } = useMediosPago();
@@ -119,15 +122,23 @@ export function MedioPagoModal({
               </View>
             ) : (
               <ScrollView style={styles.scrollView}>
-                {mediosPago.length === 0 ? (
+                {(excludeEfectivo
+                  ? mediosPago.filter((m) => !m.nombre.toLowerCase().includes('efectivo'))
+                  : mediosPago
+                ).length === 0 ? (
                   <View style={styles.emptyContainer}>
                     <MaterialCommunityIcons name="wallet-outline" size={48} color="#999999" />
                     <Text variant="bodyMedium" style={styles.emptyText}>
-                      No hay medios de pago disponibles
+                      {excludeEfectivo
+                        ? 'No hay medios de pago válidos (se excluye efectivo)'
+                        : 'No hay medios de pago disponibles'}
                     </Text>
                   </View>
                 ) : (
-                  mediosPago.map((medio) => (
+                  (excludeEfectivo
+                    ? mediosPago.filter((m) => !m.nombre.toLowerCase().includes('efectivo'))
+                    : mediosPago
+                  ).map((medio) => (
                     <TouchableOpacity
                       key={medio.id}
                       onPress={() => handleSelect(medio)}

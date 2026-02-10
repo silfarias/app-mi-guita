@@ -1,4 +1,4 @@
-import { CategoriaIconBadge, CardActionsMenu } from '@/common/components';
+import { CategoriaIconBadge, CardActionsMenu, MedioPagoLabel } from '@/common/components';
 import { PagoGastoFijoPorGastoFijoResponse } from '@/features/gasto-fijo/interfaces/pago-gasto-fijo.interface';
 import { formatCurrency } from '@/utils/currency';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -95,6 +95,20 @@ export function GastoFijoPagoCard({
               <Text variant="bodySmall" style={styles.categoria}>
                 {gastoFijo.categoria.nombre}
               </Text>
+              {gastoFijo.esDebitoAutomatico && gastoFijo.medioPago && (
+                <View style={styles.debitoRow}>
+                  <Text variant="labelSmall" style={styles.debitoLabel}>
+                    Débito automático
+                  </Text>
+                  <Text variant="labelSmall" style={styles.debitoSeparator}>·</Text>
+                  <MedioPagoLabel
+                    tipo={gastoFijo.medioPago.tipo}
+                    nombre={gastoFijo.medioPago.nombre}
+                    iconSize={12}
+                    iconColor="#6CB4EE"
+                  />
+                </View>
+              )}
             </View>
           </View>
           <View style={styles.right}>
@@ -181,6 +195,19 @@ const styles = StyleSheet.create({
   },
   categoria: {
     color: '#666666',
+  },
+  debitoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 4,
+  },
+  debitoLabel: {
+    color: '#6CB4EE',
+    fontWeight: '600',
+  },
+  debitoSeparator: {
+    color: '#999999',
   },
   right: {
     alignItems: 'flex-end',

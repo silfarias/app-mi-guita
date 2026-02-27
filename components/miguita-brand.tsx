@@ -1,16 +1,13 @@
-import { StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
-
+import { Image, StyleSheet, View } from 'react-native';
 
 export function MiGuitaBrand() {
   return (
     <View style={styles.brandContainer}>
-      <Text variant="displaySmall" style={styles.brandName}>
-      💰 MiGuita
-      </Text>
-      <Text variant="bodyMedium" style={styles.brandTagline}>
-        Tu dinero, bajo control
-      </Text>
+      <Image
+        source={require('../assets/logo-mi-guita.png')}
+        style={styles.logo}
+        resizeMode="contain"
+      />
     </View>
   );
 }
@@ -18,18 +15,11 @@ export function MiGuitaBrand() {
 const styles = StyleSheet.create({
   brandContainer: {
     alignItems: 'center',
-    marginBottom: 32,
-    paddingTop: 20,
+    marginBottom: 0,
+    paddingTop: 10,
   },
-  brandName: {
-    fontWeight: 'bold',
-    color: '#6CB4EE', // Celeste argentino
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  brandTagline: {
-    color: '#666666',
-    textAlign: 'center',
-    fontStyle: 'italic',
+  logo: {
+    width: 240,
+    height: 240,
   },
 });

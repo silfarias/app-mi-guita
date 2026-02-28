@@ -1,4 +1,4 @@
-import { ItemMenuMedioPago } from '@/components/item-menu-medio-pago';
+import { ItemMenuMedioPago } from '@/features/medio-pago/components/item-menu-medio-pago';
 import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
 import { MedioPago, TipoMedioPago } from '@/features/medio-pago/interfaces/medio-pago.interface';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

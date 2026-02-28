@@ -41,7 +41,8 @@ export interface PagoGastoFijoPorGastoFijoResponse {
 }
 
 export interface PagoGastoFijoPorInfoInicialResponse {
-  infoInicial: InfoInicialResponse;
+  /** Null cuando el backend responde 404 (ej. aún no hay pagos para esa info inicial). */
+  infoInicial: InfoInicialResponse | null;
   pagos: PagoGastoFijoPorGastoFijoResponse[];
 }
 

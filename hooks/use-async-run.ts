@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { UNAUTHORIZED_MESSAGE } from '@/utils/api-client';
 
 const DEFAULT_ERROR_MESSAGE = 'Ha ocurrido un error';
 
@@ -18,8 +19,11 @@ export function useAsyncRun() {
       return result;
     } catch (err) {
       const message = getErrorMessage(err, options?.errorFallback);
-      setError(message);
-      if (options?.logLabel) console.error(`Error en ${options.logLabel}:`, err);
+      const isUnauthorized = message === UNAUTHORIZED_MESSAGE;
+      if (!isUnauthorized) {
+        setError(message);
+        if (options?.logLabel) console.error(`Error en ${options.logLabel}:`, err);
+      }
       return undefined;
     } finally {
       setLoading(false);

@@ -1,6 +1,27 @@
+import { router } from "expo-router";
+import Toast from "react-native-toast-message";
 import { API_URL } from "@/constants/api";
+import { useAuthStore } from "@/store/auth.store";
 
-const UNAUTHORIZED_MESSAGE = "Sesión expirada. Por favor, inicia sesión nuevamente";
+export const UNAUTHORIZED_MESSAGE = "Sesión expirada. Por favor, inicia sesión nuevamente";
+
+let lastUnauthorizedHandled = 0;
+const UNAUTHORIZED_DEBOUNCE_MS = 3000;
+
+function handleUnauthorized(): void {
+  const now = Date.now();
+  if (now - lastUnauthorizedHandled < UNAUTHORIZED_DEBOUNCE_MS) return;
+  lastUnauthorizedHandled = now;
+  useAuthStore.getState().logout();
+  router.replace("/login" as any);
+  Toast.show({
+    type: "info",
+    text1: "Sesión expirada",
+    text2: "Iniciá sesión nuevamente",
+    position: "top",
+    visibilityTime: 3000,
+  });
+}
 
 type QueryValue = string | number | boolean | undefined | null;
 
@@ -31,7 +52,10 @@ export async function fetchAuthGet<T>(
   });
 
   if (!response.ok) {
-    if (response.status === 401) throw new Error(UNAUTHORIZED_MESSAGE);
+    if (response.status === 401) {
+      handleUnauthorized();
+      throw new Error(UNAUTHORIZED_MESSAGE);
+    }
     // Si allowEmpty es true y el status es 404, retornar respuesta vacía en lugar de error
     if (response.status === 404) {
       if (options.allowEmpty) {
@@ -71,7 +95,10 @@ export async function fetchAuthPost<T, B = unknown>(
   });
 
   if (!response.ok) {
-    if (response.status === 401) throw new Error(UNAUTHORIZED_MESSAGE);
+    if (response.status === 401) {
+      handleUnauthorized();
+      throw new Error(UNAUTHORIZED_MESSAGE);
+    }
     let message = options.defaultError;
     try {
       const data = await response.json();
@@ -103,7 +130,10 @@ export async function fetchAuthPatch<T, B = unknown>(
   });
 
   if (!response.ok) {
-    if (response.status === 401) throw new Error(UNAUTHORIZED_MESSAGE);
+    if (response.status === 401) {
+      handleUnauthorized();
+      throw new Error(UNAUTHORIZED_MESSAGE);
+    }
     let message = options.defaultError;
     try {
       const data = await response.json();
@@ -132,7 +162,10 @@ export async function fetchAuthDelete<T>(
   });
 
   if (!response.ok) {
-    if (response.status === 401) throw new Error(UNAUTHORIZED_MESSAGE);
+    if (response.status === 401) {
+      handleUnauthorized();
+      throw new Error(UNAUTHORIZED_MESSAGE);
+    }
     let message = options.defaultError;
     try {
       const contentType = response.headers.get("content-type");

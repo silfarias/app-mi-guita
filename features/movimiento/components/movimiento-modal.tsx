@@ -6,7 +6,7 @@ import {
   TextInputFormField,
 } from '@/common/components';
 import { PortalModalForm } from '@/common/forms';
-import { CategoriaModal } from '@/components/categoria-modal';
+import { CategoriaModal } from '@/features/categoria/components/categoria-modal';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
 import { Categoria } from '@/features/categoria/interfaces/categoria.interface';
 import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';

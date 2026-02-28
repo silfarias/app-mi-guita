@@ -8,14 +8,17 @@ interface AuthState {
   accessToken: string | null;
   usuario: Usuario | null;
   isAuthenticated: boolean;
+  /** True cuando el store se rehidrató desde AsyncStorage (para no hacer redirect antes de saber si hay sesión). */
+  _hasHydrated: boolean;
 
-      // Acciones
-      setAuth: (token: string, usuario: Usuario) => void;
-      setUsuario: (usuario: Usuario) => void;
-      logout: () => void;
-      updateUsuario: (usuario: Partial<Usuario>) => void;
-      initializeAuth: () => Promise<void>;
-      clearStorage: () => Promise<void>;
+  // Acciones
+  setAuth: (token: string, usuario: Usuario) => void;
+  setUsuario: (usuario: Usuario) => void;
+  logout: () => void;
+  updateUsuario: (usuario: Partial<Usuario>) => void;
+  initializeAuth: () => Promise<void>;
+  clearStorage: () => Promise<void>;
+  setHasHydrated: (value: boolean) => void;
 }
 
 /**
@@ -35,6 +38,7 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       usuario: null,
       isAuthenticated: false,
+      _hasHydrated: false,
 
       // Función para establecer la autenticación después del login
       setAuth: (token: string, usuario: Usuario) => {
@@ -95,16 +99,21 @@ export const useAuthStore = create<AuthState>()(
           throw error;
         }
       },
+
+      setHasHydrated: (value: boolean) => set({ _hasHydrated: value }),
     }),
     {
       name: 'auth-storage', // Nombre de la clave en AsyncStorage
       storage: createJSONStorage(() => AsyncStorage),
-      // Solo persistir estos campos
       partialize: (state) => ({
         accessToken: state.accessToken,
         usuario: state.usuario,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Cuando termina de cargar desde AsyncStorage, marcar como listo
+        useAuthStore.getState().setHasHydrated(true);
+      },
     }
   )
 );

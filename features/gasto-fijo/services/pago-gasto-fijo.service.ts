@@ -15,6 +15,7 @@ export class PagoGastoFijoService {
 
   async getPorInfoInicial(token: string, infoInicialId: number): Promise<PagoGastoFijoPorInfoInicialResponse> {
     const query = buildSearchQuery({ infoInicialId });
+<<<<<<< HEAD
     try {
       return await fetchAuthGet(token, `/pago-gasto-fijo/por-info-inicial${query}`, {
         defaultError: "Error al obtener los pagos por info inicial",
@@ -27,6 +28,13 @@ export class PagoGastoFijoService {
       }
       throw err;
     }
+=======
+    return fetchAuthGet(token, `/pago-gasto-fijo/por-info-inicial${query}`, {
+      defaultError: "Error al obtener los pagos por info inicial",
+      // Si no hay info inicial para ese mes, no es un error: solo no hay datos
+      notFoundReturnValue: { infoInicial: undefined as any, pagos: [] } as PagoGastoFijoPorInfoInicialResponse,
+    });
+>>>>>>> 13e813952ada004cd2cf47a89685e96949924c12
   }
 
   async update(

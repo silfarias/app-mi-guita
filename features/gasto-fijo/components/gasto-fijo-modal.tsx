@@ -21,10 +21,10 @@ import { MedioPago } from '@/features/medio-pago/interfaces/medio-pago.interface
 import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
 import { MedioPagoModal } from '@/features/medio-pago/components/medio-pago-modal';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import Toast from 'react-native-toast-message';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Switch, Text } from 'react-native-paper';
 
 interface GastoFijoItemForm {
@@ -110,6 +110,7 @@ export function GastoFijoModal({
   const [activeMedioPagoIndex, setActiveMedioPagoIndex] = useState<number | null>(null);
   const [selectedMedioPagoByIndex, setSelectedMedioPagoByIndex] = useState<Record<number, MedioPago>>({});
 
+  const scrollRef = useRef<ScrollView>(null);
   const { data: mediosPago, fetchMediosPago } = useMediosPago();
 
   useEffect(() => {
@@ -202,6 +203,10 @@ export function GastoFijoModal({
       esDebitoAutomatico: false,
       medioPagoId: null,
     });
+    // Hacer scroll al tope para que el usuario vea el nuevo item agregado arriba
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }, 50);
   };
 
   const handleCerrarCategoriaModal = () => {
@@ -341,6 +346,7 @@ export function GastoFijoModal({
       }
       cancelLabel="Cancelar"
       topContent={!isEditMode ? topContent : undefined}
+      scrollRef={scrollRef}
       initialLoading={isEditMode && loadingGastoFijo}
     >
       <View style={styles.sectionHeader}>
@@ -650,7 +656,8 @@ const styles = StyleSheet.create({
     color: '#6CB4EE',
   },
   deleteButton: {
-    padding: 4,
+    paddingVertical: 0,
+    paddingHorizontal: 4,
   },
   montoHint: {
     marginLeft: 3,

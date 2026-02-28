@@ -39,6 +39,8 @@ export interface PortalModalFormProps {
   customEmptyState?: React.ReactNode;
   /** Contenido opcional arriba del ScrollView (ej. banner informativo). */
   topContent?: React.ReactNode;
+  /** Ref opcional del ScrollView para controlar el scroll desde el padre (ej. scroll al tope). */
+  scrollRef?: React.RefObject<ScrollView | null>;
   /** Deshabilitar además el botón Enviar (ej. cuando falta un requisito). */
   submitDisabled?: boolean;
 }
@@ -124,6 +126,7 @@ export function PortalModalForm({
   initialLoading = false,
   customEmptyState,
   topContent,
+  scrollRef,
   submitDisabled = false,
 }: PortalModalFormProps) {
   const handleClose = () => {
@@ -175,6 +178,7 @@ export function PortalModalForm({
                 customEmptyState
               ) : (
                 <ScrollView
+                  ref={scrollRef}
                   style={styles.scrollView}
                   contentContainerStyle={styles.scrollContent}
                   keyboardShouldPersistTaps="handled"

@@ -21,7 +21,7 @@ export { FormActions, type FormActionsProps };
 
 export { RadioGroupField, type RadioGroupFieldProps, type RadioOption } from './radio-group-field';
 
-export { CategoriaIconBadge, type CategoriaIconBadgeProps } from './categoria-icon-badge';
+export { CategoriaIconBadge, type CategoriaIconBadgeProps } from '@/features/categoria/components/categoria-icon-badge';
 export { AmountDisplay, type AmountDisplayProps, type AmountType } from './amount-display';
 export { CardActionsMenu, type CardActionsMenuProps, type CardActionItem } from './card-actions-menu';
 export { MedioPagoLabel, type MedioPagoLabelProps } from './medio-pago-label';

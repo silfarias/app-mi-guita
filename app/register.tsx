@@ -14,8 +14,8 @@ import {
 } from 'react-native';
 import { Button, Text, TextInput } from 'react-native-paper';
 
-import { AuthFooterLink } from '@/components/auth-footer-link';
-import { AuthSectionHeader } from '@/components/auth-section-header';
+import { AuthFooterLink } from '@/features/auth/components/auth-footer-link';
+import { AuthSectionHeader } from '@/features/auth/components/auth-section-header';
 import { MiGuitaBrand } from '@/components/miguita-brand';
 import { FormErrorBlock, TextInputFormField } from '@/common/components';
 import { useSignupForm } from '@/features/auth/hooks/auth.hook';

@@ -2,11 +2,11 @@ import { BalanceCard } from '@/components/balance-card';
 import { ComparacionMesAnterior } from '@/components/comparacion-mes-anterior';
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
 import { GastosFijosResumenCard } from '@/components/gastos-fijos-resumen-card';
-import { GraficoTortaCategorias } from '@/components/grafico-torta-categorias';
+import { GraficoTortaCategorias } from '@/features/categoria/components/grafico-torta-categorias';
 import { ResumenCards } from '@/components/resumen-cards';
-import { SaldosPorMedioPago } from '@/components/saldos-por-medio-pago';
+import { SaldosPorMedioPago } from '@/features/medio-pago/components/saldos-por-medio-pago';
 import { SideMenu, SideMenuItem } from '@/components/side-menu';
-import { Top5Categorias } from '@/components/top5-categorias';
+import { Top5Categorias } from '@/features/categoria/components/top5-categorias';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
 import { GastoFijoModal } from '@/features/gasto-fijo/components/gasto-fijo-modal';
 import {

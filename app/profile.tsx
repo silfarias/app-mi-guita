@@ -10,8 +10,8 @@ import {
 import { Card, Text } from 'react-native-paper';
 
 import { BoxProfile } from '@/components/box-profile';
-import { ChangePasswordModal } from '@/components/change-password-modal';
-import { EditUserModal } from '@/components/edit-user-modal';
+import { ChangePasswordModal } from '@/features/auth/components/change-password-modal';
+import { EditUserModal } from '@/features/auth/components/edit-user-modal';
 import { SettingsRow } from '@/components/settings-row';
 import { Header } from '@/components/ui/header';
 import { ErrorStateCard, LoadingStateBlock } from '@/common/components';

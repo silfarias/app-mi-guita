@@ -1,4 +1,4 @@
-import { CategoriaModal } from '@/components/categoria-modal';
+import { CategoriaModal } from '@/features/categoria/components/categoria-modal';
 import {
   MoneyInputFormField,
   SelectTriggerField,

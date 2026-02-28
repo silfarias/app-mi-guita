@@ -1,9 +1,9 @@
 import { BalanceCard } from '@/components/balance-card';
 import { ComparacionMesAnterior } from '@/components/comparacion-mes-anterior';
-import { GraficoTortaCategorias } from '@/components/grafico-torta-categorias';
+import { GraficoTortaCategorias } from '@/features/categoria/components/grafico-torta-categorias';
 import { ResumenCards } from '@/components/resumen-cards';
-import { SaldosPorMedioPago } from '@/components/saldos-por-medio-pago';
-import { Top5Categorias } from '@/components/top5-categorias';
+import { SaldosPorMedioPago } from '@/features/medio-pago/components/saldos-por-medio-pago';
+import { Top5Categorias } from '@/features/categoria/components/top5-categorias';
 import { ReporteMensualResponse } from '@/features/reporte/interfaces/reporte.interface';
 import { Fragment } from 'react';
 

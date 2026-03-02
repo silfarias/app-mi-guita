@@ -82,7 +82,8 @@ export function useSignupForm() {
       };
       const response = await authService.signup(signupData);
       setAuth(response.access_token, response.usuario);
-      router.replace('/(tabs)' as any);
+      // Después de registrarse, llevar al setup inicial de cuentas
+      router.replace('/setup-cuentas' as any);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al registrar usuario');
       console.error('Error en signup:', err);

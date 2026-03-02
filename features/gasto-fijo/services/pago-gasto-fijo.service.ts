@@ -1,7 +1,7 @@
 import { buildSearchQuery, fetchAuthGet, fetchAuthPatch } from "@/utils/api-client";
 import {
   PagoGastoFijoByIdResponse,
-  PagoGastoFijoPorInfoInicialResponse,
+  PagoGastoFijoPorMesResponse,
   PagoGastoFijoRequest,
 } from "../interfaces/pago-gasto-fijo.interface";
 
@@ -13,20 +13,16 @@ export class PagoGastoFijoService {
     });
   }
 
-  async getPorInfoInicial(token: string, infoInicialId: number): Promise<PagoGastoFijoPorInfoInicialResponse> {
-    const query = buildSearchQuery({ infoInicialId });
-    try {
-      return await fetchAuthGet(token, `/pago-gasto-fijo/por-info-inicial${query}`, {
-        defaultError: "Error al obtener los pagos por info inicial",
-        notFoundError: "Info inicial no encontrada",
-      });
-    } catch (err) {
-      // 404 = aún no hay pagos para esta info inicial (ej. recién registrada); no es un error
-      if (err instanceof Error && err.message === "Info inicial no encontrada") {
-        return { infoInicial: null, pagos: [] };
-      }
-      throw err;
-    }
+  /** Obtener pagos de gastos fijos para un mes/año concreto (sin info inicial). */
+  async getPagosPorMes(
+    token: string,
+    anio: number,
+    mes: string
+  ): Promise<PagoGastoFijoPorMesResponse> {
+    const query = buildSearchQuery({ anio, mes });
+    return fetchAuthGet(token, `/pago-gasto-fijo/pagos-por-mes${query}`, {
+      defaultError: "Error al obtener los pagos de gastos fijos del mes",
+    });
   }
 
   async update(

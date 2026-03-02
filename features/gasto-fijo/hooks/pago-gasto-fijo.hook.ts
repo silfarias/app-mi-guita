@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAuthStore } from '../../../store/auth.store';
 import {
   PagoGastoFijoByIdResponse,
-  PagoGastoFijoPorInfoInicialResponse,
+  PagoGastoFijoPorMesResponse,
   PagoGastoFijoRequest,
 } from '../interfaces/pago-gasto-fijo.interface';
 import { PagoGastoFijoService } from '../services/pago-gasto-fijo.service';
@@ -74,36 +74,36 @@ export function useUpdatePagoGastoFijo() {
   return { data, loading, error, update, reset };
 }
 
-export function usePagosPorInfoInicial(infoInicialId: number | null | undefined) {
+/** Hook para obtener los pagos de gastos fijos de un mes/año (sin info inicial). */
+export function usePagosGastoFijoPorMes(anio: number | null | undefined, mes: string | null | undefined) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const { loading, error, setError, run } = useAsyncRun();
-  const [data, setData] = useState<PagoGastoFijoPorInfoInicialResponse | null>(null);
+  const [data, setData] = useState<PagoGastoFijoPorMesResponse | null>(null);
 
-  const fetchPagosPorInfoInicial = async () => {
-    if (infoInicialId == null || !accessToken) {
+  const fetchPagosPorMes = async () => {
+    if (anio == null || !mes || !accessToken) {
       if (!accessToken) setError('No hay sesión activa');
       return;
     }
     await run(
       async () => {
-        const response = await pagoGastoFijoService.getPorInfoInicial(accessToken, infoInicialId);
+        const response = await pagoGastoFijoService.getPagosPorMes(accessToken, anio, mes);
         setData(response);
         return response;
       },
       {
-        errorFallback: 'Error al obtener los pagos por info inicial',
-        logLabel: 'pago-gasto-fijo.getPorInfoInicial',
+        errorFallback: 'Error al obtener los pagos de gastos fijos del mes',
+        logLabel: 'pago-gasto-fijo.getPagosPorMes',
       }
     );
   };
 
   return {
     data,
-    infoInicial: data?.infoInicial ?? null,
     pagos: data?.pagos ?? [],
     loading,
     error,
-    fetchPagosPorInfoInicial,
-    refetch: fetchPagosPorInfoInicial,
+    fetchPagosPorMes,
+    refetch: fetchPagosPorMes,
   };
 }

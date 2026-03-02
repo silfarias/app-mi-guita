@@ -51,7 +51,7 @@ export default function RegisterScreen() {
 
           <AuthSectionHeader
             title="Crear Cuenta"
-            subtitle="Únete a MiGuita y comienza a gestionar tu dinero"
+            subtitle="Únete a MiGuita y organizá tu plata de forma simple"
           />
 
           {/* Selector de Foto de Perfil */}

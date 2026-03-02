@@ -1,5 +1,4 @@
 import { Categoria } from "@/features/categoria/interfaces/categoria.interface";
-import { InfoInicialResponse } from "@/features/info-inicial/interfaces/info-inicial.interface";
 import { MedioPago } from "@/features/medio-pago/interfaces/medio-pago.interface";
 
 export interface PagoGastoFijoRequest {
@@ -20,7 +19,6 @@ export interface PagoLite {
 export interface PagoGastoFijoResponse {
   id: number;
   gastoFijoId: number;
-  infoInicialId: number;
   montoPago: number;
   pagado: boolean;
 }
@@ -40,16 +38,14 @@ export interface PagoGastoFijoPorGastoFijoResponse {
   pago: PagoLite;
 }
 
-export interface PagoGastoFijoPorInfoInicialResponse {
-  /** Null cuando el backend responde 404 (ej. aún no hay pagos para esa info inicial). */
-  infoInicial: InfoInicialResponse | null;
+/** Respuesta simplificada para pagos de gastos fijos por mes (sin info inicial). */
+export interface PagoGastoFijoPorMesResponse {
   pagos: PagoGastoFijoPorGastoFijoResponse[];
 }
 
 export interface PagoGastoFijoByIdResponse {
   id: number;
   gastoFijo: GastoFijoEnPago;
-  infoInicial: InfoInicialResponse;
-  montoPago: string;
+  montoPago: number | string;
   pagado: boolean;
 }

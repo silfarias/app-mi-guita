@@ -11,20 +11,12 @@ import { GastoFijoModal } from '@/features/gasto-fijo/components/gasto-fijo-moda
 import { GastoFijoPagoCard } from '@/features/gasto-fijo/components/gasto-fijo-pago-card';
 import { MontoPagoModal } from '@/features/gasto-fijo/components/monto-pago-modal';
 import { useDeleteGastoFijo, useMisGastosFijos } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
-import {
-  usePagosPorInfoInicial,
-  useUpdatePagoGastoFijo,
-} from '@/features/gasto-fijo/hooks/pago-gasto-fijo.hook';
+import { usePagosGastoFijoPorMes, useUpdatePagoGastoFijo } from '@/features/gasto-fijo/hooks/pago-gasto-fijo.hook';
 import { PagoGastoFijoPorGastoFijoResponse } from '@/features/gasto-fijo/interfaces/pago-gasto-fijo.interface';
-import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
-import { useResumenPagoGastoFijo } from '@/features/resumen-pago-gasto-fijo/hooks/resumen-pago-gasto-fijo.hook';
-import { formatCurrency } from '@/utils/currency';
 import { getCurrentMonth, getCurrentYear } from '@/utils/date';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, ProgressBar, Text } from 'react-native-paper';
+import { Button, Card, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
@@ -43,20 +35,12 @@ export default function GastosFijosScreen() {
   const currentMonth = getCurrentMonth();
   const currentYear = getCurrentYear();
 
-  const { data: infoIniciales, loading: loadingInfoInicial, fetch: fetchInfoIniciales } =
-    useInfoInicialPorUsuario();
-  const infoInicialDelMes = infoIniciales?.find(
-    (info) => info.mes === currentMonth && info.anio === currentYear
-  );
-  const infoInicialId = infoInicialDelMes?.id ?? null;
-
   const {
     pagos,
-    infoInicial,
     loading: loadingPagos,
     error: errorPagos,
-    fetchPagosPorInfoInicial,
-  } = usePagosPorInfoInicial(infoInicialId);
+    fetchPagosPorMes,
+  } = usePagosGastoFijoPorMes(currentYear, currentMonth);
 
   const { deleteGastoFijo, loading: deleting } = useDeleteGastoFijo();
   const { update: updatePagoGastoFijo, loading: updatingPago } = useUpdatePagoGastoFijo();
@@ -67,48 +51,11 @@ export default function GastosFijosScreen() {
     fetchMisGastosFijos,
   } = useMisGastosFijos();
 
-  const {
-    data: resumenData,
-    loading: loadingResumen,
-    fetchResumen,
-  } = useResumenPagoGastoFijo(infoInicialId);
-
-  const sinInfoInicial = !infoIniciales || infoIniciales.length === 0;
-
   const cargar = useCallback(() => {
-    fetchInfoIniciales();
-    if (infoInicialId != null) {
-      fetchPagosPorInfoInicial();
-      fetchResumen();
-    }
-    if (sinInfoInicial) {
-      fetchMisGastosFijos();
-    }
-    // Funciones fetch inestables (nueva ref cada render); solo dependemos de los ids/banderas.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [infoInicialId, sinInfoInicial]);
-
-  useEffect(() => {
-    fetchInfoIniciales();
-    // Solo al montar; fetch no estable.
+    fetchPagosPorMes();
+    fetchMisGastosFijos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (infoInicialId != null) {
-      fetchPagosPorInfoInicial();
-      fetchResumen();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [infoInicialId]);
-
-  useEffect(() => {
-    if (sinInfoInicial) {
-      fetchMisGastosFijos();
-    }
-    // Solo cuando cambia sinInfoInicial; omitir fetchMisGastosFijos para evitar bucle (ref inestable).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sinInfoInicial]);
 
   useEffect(() => {
     setPage(0);
@@ -186,8 +133,7 @@ export default function GastosFijosScreen() {
         position: 'top',
         visibilityTime: 2000,
       });
-      fetchPagosPorInfoInicial();
-      fetchResumen();
+      fetchPagosPorMes();
     } catch {
       Toast.show({
         type: 'error',
@@ -234,142 +180,7 @@ export default function GastosFijosScreen() {
     setPage(newPage);
   };
 
-  const isLoading = loadingInfoInicial || loadingPagos;
-
-  // Sin info inicial: mostrar mensaje para configurar el mes
-  if (!loadingInfoInicial && !infoInicialDelMes && infoIniciales && infoIniciales.length > 0) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Text variant="headlineSmall" style={styles.title}>
-            Gastos Fijos
-          </Text>
-        </View>
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.contentContainer}
-          refreshControl={
-            <RefreshControl refreshing={loadingInfoInicial} onRefresh={handleRefresh} />
-          }
-        >
-          <EmptyStateCard
-            icon="calendar-month"
-            title="Configura tu mes"
-            description={`Registra tu información inicial de ${currentMonth} ${currentYear} para ver y gestionar el estado de tus gastos fijos.`}
-          />
-          <Button
-            mode="contained"
-            onPress={() => router.push('/info-inicial-mes' as any)}
-            style={styles.configButton}
-          >
-            Configurar información inicial
-          </Button>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // Usuario sin info iniciales (nuevo): puede ver sus gastos fijos (solo lectura de pagos) y se le pide configurar info inicial
-  if (!loadingInfoInicial && sinInfoInicial) {
-    const loadingLista = loadingMisGastosFijos;
-    const tieneGastosFijos = misGastosFijos.length > 0;
-
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Text variant="headlineSmall" style={styles.title}>
-            Gastos Fijos
-          </Text>
-        </View>
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.contentContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={loadingInfoInicial || loadingLista}
-              onRefresh={handleRefresh}
-            />
-          }
-        >
-          <View style={styles.advisoryCard}>
-            <Text variant="titleSmall" style={styles.advisoryTitle}>
-              Registra tu información inicial del mes
-            </Text>
-            <Text variant="bodySmall" style={styles.advisoryText}>
-              Para ver el estado de pagos y marcar como pagado cada gasto fijo, configura primero tu información inicial (saldo y medios de pago) del mes actual.
-            </Text>
-            <Button
-              mode="contained"
-              onPress={() => router.push('/(tabs)' as any)}
-              style={styles.configButton}
-            >
-              Configurar información inicial
-            </Button>
-          </View>
-
-          {loadingLista ? (
-            <LoadingStateBlock message="Cargando tus gastos fijos..." />
-          ) : !tieneGastosFijos ? (
-            <EmptyStateCard
-              icon="repeat"
-              title="No hay gastos fijos"
-              description="Agrega tus gastos fijos para verlos aquí. Cuando configures la información inicial del mes, podrás marcar si los pagaste."
-            />
-          ) : (
-            <View style={styles.listContainer}>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                Tus gastos fijos ({misGastosFijos.length})
-              </Text>
-              <Text variant="bodySmall" style={styles.advisorySubtext}>
-                Para poder gestionar los pagos debes configurar tu información inicial del mes.
-              </Text>
-              {misGastosFijos.map((gastoFijo) => (
-                <GastoFijoCard
-                  key={gastoFijo.id}
-                  gastoFijo={gastoFijo}
-                  onEdit={handleEditarGastoFijo}
-                  onDelete={handleEliminarGastoFijo}
-                  menuVisible={menuVisible === gastoFijo.id}
-                  onMenuOpen={() => setMenuVisible(gastoFijo.id)}
-                  onMenuClose={() => setMenuVisible(null)}
-                  showMenu
-                />
-              ))}
-            </View>
-          )}
-        </ScrollView>
-
-        <AddFAB onPress={() => setIsGastoFijoModalVisible(true)} />
-
-        <GastoFijoModal
-          visible={isGastoFijoModalVisible}
-          onDismiss={() => {
-            setIsGastoFijoModalVisible(false);
-            setGastoFijoSeleccionado(null);
-          }}
-          onSuccess={() => {
-            handleRefresh();
-            setGastoFijoSeleccionado(null);
-          }}
-          gastoFijoId={gastoFijoSeleccionado}
-        />
-
-        <ConfirmacionModal
-          visible={isConfirmacionModalVisible}
-          onDismiss={() => {
-            setIsConfirmacionModalVisible(false);
-            setGastoFijoSeleccionado(null);
-          }}
-          onConfirm={confirmarEliminar}
-          title="¿Eliminar gasto fijo?"
-          message="¿Seguro que quieres eliminar este gasto fijo? Esta acción no se puede deshacer."
-          confirmText="Eliminar"
-          cancelText="Cancelar"
-          loading={deleting}
-        />
-      </View>
-    );
-  }
+  const isLoading = loadingPagos;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -377,11 +188,6 @@ export default function GastosFijosScreen() {
         <Text variant="headlineSmall" style={styles.title}>
           Gastos Fijos
         </Text>
-        {infoInicial && (
-          <Text variant="bodySmall" style={styles.subtitle}>
-            {infoInicial.mes} {infoInicial.anio}
-          </Text>
-        )}
       </View>
 
       <ScrollView
@@ -412,47 +218,6 @@ export default function GastosFijosScreen() {
           </>
         ) : (
           <>
-            <Card style={styles.resumenCard}>
-              <Card.Content>
-                <View style={styles.resumenHeader}>
-                  <MaterialCommunityIcons name="repeat" size={24} color="#6CB4EE" />
-                  <Text variant="titleMedium" style={styles.resumenTitle}>
-                    Resumen del mes
-                  </Text>
-                </View>
-                {loadingResumen ? (
-                  <Text variant="bodyMedium" style={styles.resumenLoading}>
-                    Cargando resumen...
-                  </Text>
-                ) : resumenData ? (
-                  <>
-                    <Text variant="bodyLarge" style={styles.resumenTexto}>
-                      Cuentas pagadas: {resumenData.cantidadGastosPagados} de {resumenData.cantidadGastosTotales}
-                    </Text>
-                    <View style={styles.resumenMontos}>
-                      <Text variant="bodySmall" style={styles.resumenMontoLabel}>
-                        Pagado: {formatCurrency(parseFloat(resumenData.montoPagado) || 0)}
-                      </Text>
-                      <Text variant="bodySmall" style={styles.resumenMontoLabel}>
-                        Total: {formatCurrency(parseFloat(resumenData.montoTotal) || 0)}
-                      </Text>
-                    </View>
-                    {resumenData.montoPendiente > 0 && (
-                      <Text variant="bodySmall" style={styles.resumenPendiente}>
-                        {formatCurrency(resumenData.montoPendiente)} pendiente
-                      </Text>
-                    )}
-                    <View style={styles.resumenProgressContainer}>
-                      <ProgressBar
-                        progress={(resumenData.porcentajePagado ?? 0) / 100}
-                        color="#6CB4EE"
-                        style={styles.resumenProgressBar}
-                      />
-                    </View>
-                  </>
-                ) : null}
-              </Card.Content>
-            </Card>
             <View style={styles.listContainer}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 Gastos Fijos Mensuales ({totalPagos})

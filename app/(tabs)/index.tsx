@@ -9,16 +9,11 @@ import { SideMenu, SideMenuItem } from '@/components/side-menu';
 import { Top5Categorias } from '@/features/categoria/components/top5-categorias';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
 import { GastoFijoModal } from '@/features/gasto-fijo/components/gasto-fijo-modal';
-import {
-  useMisGastosFijos,
-} from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
-import { usePagosPorInfoInicial } from '@/features/gasto-fijo/hooks/pago-gasto-fijo.hook';
-import { InfoInicialModal } from '@/features/info-inicial/components/info-inicial-modal';
-import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
+import { useMisGastosFijos } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
 import { MovimientoCard } from '@/features/movimiento/components/movimiento-card';
 import { MovimientoModal } from '@/features/movimiento/components/movimiento-modal';
 import { useDeleteMovimiento, useMovimientosPorInfo } from '@/features/movimiento/hooks/movimiento.hook';
-import { useReporteMensual } from '@/features/reporte/hooks/reporte.hook';
+import { useDashboardResumen } from '@/features/dashboard/hooks/dashboard.hook';
 import { useAuthStore } from '@/store/auth.store';
 import { getCurrentMonth, getCurrentYear } from '@/utils/date';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -33,7 +28,6 @@ export default function HomeScreen() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMovimientoModalVisible, setIsMovimientoModalVisible] = useState(false);
   const [isConfirmacionModalVisible, setIsConfirmacionModalVisible] = useState(false);
-  const [isInfoInicialModalVisible, setIsInfoInicialModalVisible] = useState(false);
   const [isGastoFijoModalVisible, setIsGastoFijoModalVisible] = useState(false);
   const [movimientoSeleccionado, setMovimientoSeleccionado] = useState<number | null>(null);
   const [menuVisible, setMenuVisible] = useState<number | null>(null);
@@ -44,38 +38,22 @@ export default function HomeScreen() {
   const usuarioFotoPerfil = useAuthStore((state) => state.usuario?.fotoPerfil);
   const { logout, loading: logoutLoading } = useLogout();
   const { data: movimientosData, loading: movimientosLoading, error: movimientosError, fetchMovimientos } = useMovimientosPorInfo();
-  const { data: reporteData, loading: reporteLoading, error: reporteError, fetchReporteMensual } = useReporteMensual();
   const { deleteMovimiento, loading: deleting } = useDeleteMovimiento();
-  const { data: infoIniciales, loading: loadingInfoInicial, fetch: fetchInfoIniciales } = useInfoInicialPorUsuario();
   const { data: gastosFijosData, loading: loadingGastosFijos, fetchMisGastosFijos } = useMisGastosFijos();
 
   const currentMonth = getCurrentMonth();
   const currentYear = getCurrentYear();
 
-  // Verificar si hay info inicial para el mes actual
-  const infoInicialDelMes = infoIniciales?.find(
-    (info) => info.mes === currentMonth && info.anio === currentYear
-  );
-  const infoInicialId = infoInicialDelMes?.id ?? null;
-  const tieneInfoInicial = !!infoInicialDelMes;
-
-  const { pagos: gastosFijosPagos, fetchPagosPorInfoInicial } = usePagosPorInfoInicial(infoInicialId);
+  const { data: dashboard, loading: dashboardLoading, error: dashboardError, fetchDashboard } =
+    useDashboardResumen(currentYear, currentMonth);
 
   // Cargar datos al montar el componente
   useEffect(() => {
     fetchMovimientos();
-    fetchReporteMensual({ anio: currentYear, mes: currentMonth });
-    fetchInfoIniciales();
+    fetchDashboard();
     fetchMisGastosFijos();
   }, []);
 
-  useEffect(() => {
-    if (infoInicialId != null) {
-      fetchPagosPorInfoInicial();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [infoInicialId]);
-  
   // Verificar si tiene gastos fijos
   const tieneGastosFijos = gastosFijosData?.gastosFijos && gastosFijosData.gastosFijos.length > 0;
 
@@ -163,7 +141,6 @@ export default function HomeScreen() {
         setIsConfirmacionModalVisible(false);
         setMovimientoSeleccionado(null);
         fetchMovimientos();
-        fetchReporteMensual({ anio: currentYear, mes: currentMonth });
       } catch (error) {
         // El error ya se maneja en el hook
       }
@@ -184,15 +161,11 @@ export default function HomeScreen() {
 
   const handleRefresh = () => {
     fetchMovimientos();
-    fetchReporteMensual({ anio: currentYear, mes: currentMonth });
-    if (infoInicialId != null) {
-      fetchPagosPorInfoInicial();
-    }
+    fetchDashboard();
     fetchMisGastosFijos();
-    fetchInfoIniciales();
   };
 
-  const isLoading = movimientosLoading || reporteLoading;
+  const isLoading = movimientosLoading || dashboardLoading;
 
   return (
     <View style={styles.container}>
@@ -224,7 +197,7 @@ export default function HomeScreen() {
           <RefreshControl refreshing={isLoading} onRefresh={handleRefresh} />
         }
       >
-        {/* Onboarding: Verificar si es usuario nuevo */}
+        {/* Onboarding: usuario nuevo sin gastos fijos */}
         {!tieneGastosFijos ? (
           <Card style={styles.infoInicialCard}>
             <Card.Content>
@@ -250,71 +223,88 @@ export default function HomeScreen() {
               </View>
             </Card.Content>
           </Card>
-        ) : !tieneInfoInicial ? (
-          <Card style={styles.infoInicialCard}>
-            <Card.Content>
-              <View style={styles.infoInicialContent}>
-                <MaterialCommunityIcons name="wallet-outline" size={48} color="#6CB4EE" />
-                <Text variant="titleMedium" style={styles.infoInicialTitle}>
-                  Configura tu mes
-                </Text>
-                <Text variant="bodyMedium" style={styles.infoInicialText}>
-                  Ahora registra con cuánto dinero iniciaste este mes. Esta información te ayudará a llevar un mejor control de tus finanzas.
-                </Text>
-                <Button
-                  mode="contained"
-                  onPress={() => setIsInfoInicialModalVisible(true)}
-                  style={styles.infoInicialButton}
-                  contentStyle={styles.infoInicialButtonContent}
-                  labelStyle={styles.infoInicialButtonLabel}
-                  icon="wallet"
-                  buttonColor="#6CB4EE"
-                >
-                  Configurar Información Inicial
-                </Button>
-              </View>
-            </Card.Content>
-          </Card>
         ) : (
           <>
-            {/* Dashboard - Resumen Principal */}
-            {reporteData && (
+            {/* Dashboard - Resumen Principal (usa /dashboard) */}
+            {dashboard && (
               <>
                 {/* Cards de Resumen */}
                 <ResumenCards
-                  totalIngresos={reporteData.totalIngresos}
-                  totalEgresos={reporteData.totalEgresos}
+                  totalIngresos={dashboard.ingresosMes}
+                  totalEgresos={dashboard.egresosMes}
                 />
 
                 {/* Balance Total */}
-                <BalanceCard balanceTotal={reporteData.balanceTotal} balanceMes={reporteData.balance} />
+                <BalanceCard balanceTotal={dashboard.saldoTotal} balanceMes={dashboard.balanceMes} />
 
-                {/* Gastos fijos resumen */}
-                {gastosFijosPagos.length > 0 && (
+                {/* Gastos fijos resumen (a partir de presupuestos / alertas) */}
+                {dashboard.presupuestos && dashboard.presupuestos.length > 0 && (
                   <GastosFijosResumenCard
-                    pagados={gastosFijosPagos.filter((p) => p.pago.pagado).length}
-                    total={gastosFijosPagos.length}
+                    pagados={dashboard.presupuestos.filter((p) => p.estado === 'OK').length}
+                    total={dashboard.presupuestos.length}
                   />
                 )}
 
-                {/* Comparación con Mes Anterior */}
-                {reporteData.comparacionMesAnterior && (
-                  <ComparacionMesAnterior comparacion={reporteData.comparacionMesAnterior} />
-                )}
+                {/* Estado del mes con mensaje humano */}
+                <ComparacionMesAnterior
+                  comparacion={{
+                    mensaje:
+                      dashboard.balanceMes >= 0
+                        ? 'Vas bien este mes 💪'
+                        : 'Te estás pasando ⚠️',
+                    balanceActual: dashboard.balanceMes,
+                    ingresos: dashboard.ingresosMes,
+                    egresos: dashboard.egresosMes,
+                  } as any}
+                />
 
                 {/* Gráfico de Torta */}
-                {reporteData.resumenPorCategoria && reporteData.resumenPorCategoria.length > 0 && (
-                  <GraficoTortaCategorias data={reporteData.resumenPorCategoria} />
+                {dashboard.gastosPorCategoria && dashboard.gastosPorCategoria.length > 0 && (
+                  <GraficoTortaCategorias
+                    data={dashboard.gastosPorCategoria.map((item) => ({
+                      categoria: {
+                        id: 0,
+                        nombre: item.categoria,
+                        descripcion: '',
+                        color: '#6CB4EE',
+                        icono: 'cash',
+                        activo: true,
+                      },
+                      total: item.total,
+                      porcentaje: 0,
+                      cantidadMovimientos: 0,
+                    })) as any}
+                  />
                 )}
 
                 {/* Top 5 Categorías */}
-                {reporteData.top5Categorias && reporteData.top5Categorias.length > 0 && (
-                  <Top5Categorias categorias={reporteData.top5Categorias} />
+                {dashboard.topCategoriasGasto && dashboard.topCategoriasGasto.length > 0 && (
+                  <Top5Categorias
+                    categorias={dashboard.topCategoriasGasto.map((c) => ({
+                      categoria: {
+                        id: 0,
+                        nombre: c.categoria,
+                        descripcion: '',
+                        color: '#6CB4EE',
+                        icono: 'cash',
+                        activo: true,
+                      },
+                      total: c.total,
+                      porcentaje: 0,
+                      cantidadMovimientos: 0,
+                    })) as any}
+                  />
                 )}
 
                 {/* Saldos por Medio de Pago */}
-                {reporteData.saldosPorMedioPago && reporteData.saldosPorMedioPago.length > 0 && (
-                  <SaldosPorMedioPago saldos={reporteData.saldosPorMedioPago} showDetails={true} />
+                {dashboard.gastosPorCuenta && dashboard.gastosPorCuenta.length > 0 && (
+                  <SaldosPorMedioPago
+                    saldos={dashboard.gastosPorCuenta.map((c) => ({
+                      medioPago: c.cuenta,
+                      total: c.total,
+                    })) as any}
+                    showDetails={true}
+                  />
                 )}
               </>
             )}
@@ -335,8 +325,8 @@ export default function HomeScreen() {
 
 
 
-        {/* Últimos Movimientos (máximo 5) - Solo si hay info inicial */}
-        {tieneInfoInicial && (
+        {/* Últimos Movimientos (máximo 5) */}
+        {true && (
           <>
             {isLoading ? (
               <View style={styles.loadingContainer}>
@@ -345,13 +335,13 @@ export default function HomeScreen() {
                   Cargando información...
                 </Text>
               </View>
-            ) : movimientosError || reporteError ? (
+            ) : movimientosError || dashboardError ? (
               <Card style={styles.errorCard}>
                 <Card.Content>
                   <View style={styles.errorContent}>
                     <MaterialCommunityIcons name="alert-circle" size={48} color="#D32F2F" />
                     <Text variant="bodyLarge" style={styles.errorText}>
-                      {movimientosError || reporteError}
+                      {movimientosError || dashboardError}
                     </Text>
                     <Button
                       mode="outlined"
@@ -431,7 +421,6 @@ export default function HomeScreen() {
         movimientoId={movimientoSeleccionado}
         onSuccess={() => {
           fetchMovimientos();
-          fetchReporteMensual({ anio: currentYear, mes: currentMonth });
           setMovimientoSeleccionado(null);
         }}
       />
@@ -442,17 +431,6 @@ export default function HomeScreen() {
         onDismiss={() => setIsGastoFijoModalVisible(false)}
         onSuccess={() => {
           fetchMisGastosFijos();
-        }}
-      />
-
-      {/* Modal de Crear Información Inicial */}
-      <InfoInicialModal
-        visible={isInfoInicialModalVisible}
-        onDismiss={() => setIsInfoInicialModalVisible(false)}
-        onSuccess={() => {
-          fetchInfoIniciales();
-          fetchMovimientos();
-          fetchReporteMensual({ anio: currentYear, mes: currentMonth });
         }}
       />
 

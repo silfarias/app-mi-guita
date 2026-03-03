@@ -8,6 +8,7 @@ import { EditUserRequest } from '../interfaces/edit-user.interface';
 import { LoginRequest } from '../interfaces/login.interface';
 import { SignupRequest } from '../interfaces/signup.interface';
 import { Usuario } from '../interfaces/usuario.interface';
+import { VerifyEmailRequest } from '../interfaces/verify-email.interface';
 import { AuthService } from '../services/auth.service';
 
 const authService = new AuthService();
@@ -220,4 +221,58 @@ export function useEditUser() {
   };
 
   return { editUser, loading, error, success, setError, setSuccess };
+}
+
+export function useSendVerificationEmail() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sendVerificationEmail = async () => {
+    if (!accessToken) {
+      setError('No hay sesión activa');
+      return false;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      await authService.sendVerificationEmail(accessToken);
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al enviar el correo');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { sendVerificationEmail, loading, error, setError };
+}
+
+export function useVerifyEmail() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const setUsuario = useAuthStore((s) => s.setUsuario);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const verifyEmail = async (request: VerifyEmailRequest) => {
+    if (!accessToken) {
+      setError('No hay sesión activa');
+      return false;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      const response = await authService.verifyEmail(accessToken, request);
+      setUsuario(response.usuario);
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al verificar el correo');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { verifyEmail, loading, error, setError };
 }

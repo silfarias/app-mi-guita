@@ -2,12 +2,10 @@ import { FormActions, SelectTriggerField } from '@/common/components';
 import { CategoriaModal } from '@/features/categoria/components/categoria-modal';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
 import { Categoria } from '@/features/categoria/interfaces/categoria.interface';
-import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
-import { InfoInicialResponse } from '@/features/info-inicial/interfaces/info-inicial.interface';
-import { MedioPagoModal } from '@/features/medio-pago/components/medio-pago-modal';
-import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
-import { MedioPago } from '@/features/medio-pago/interfaces/medio-pago.interface';
+import { useCuentas } from '@/features/cuenta/hooks/cuenta.hook';
+import { CuentaItemResponse } from '@/features/cuenta/interfaces/cuenta.interface';
 import { MovimientoFiltros, TipoMovimientoEnum } from '@/features/movimiento/interfaces/movimiento.interface';
+import { getFechasDelMes, MESES } from '@/features/consultas-historicas/utils/meses';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -28,6 +26,20 @@ function formatMesSelector(mes: string, anio: number): string {
   return `${mes} ${anio}`;
 }
 
+/** Genera los últimos 12 meses para el selector. */
+function getMesesDisponibles(): { mes: string; anio: number }[] {
+  const now = new Date();
+  const result: { mes: string; anio: number }[] = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    result.push({
+      mes: MESES[d.getMonth()],
+      anio: d.getFullYear(),
+    });
+  }
+  return result;
+}
+
 export function MovimientosFilterCard({
   filtrosTemporales,
   onFiltrosChange,
@@ -35,21 +47,27 @@ export function MovimientosFilterCard({
   onLimpiar,
 }: MovimientosFilterCardProps) {
   const [mesMenuVisible, setMesMenuVisible] = useState(false);
+  const [cuentaMenuVisible, setCuentaMenuVisible] = useState(false);
   const [tipoMovimientoMenuVisible, setTipoMovimientoMenuVisible] = useState(false);
   const [isCategoriaModalVisible, setIsCategoriaModalVisible] = useState(false);
-  const [isMedioPagoModalVisible, setIsMedioPagoModalVisible] = useState(false);
 
-  const { data: infoIniciales, fetch: fetchInfoIniciales } = useInfoInicialPorUsuario();
+  const mesesDisponibles = getMesesDisponibles();
+  const { data: cuentas, fetch: fetchCuentas } = useCuentas();
   const { data: categorias } = useCategorias({ activo: true });
-  const { data: mediosPago } = useMediosPago();
 
   useEffect(() => {
-    fetchInfoIniciales();
+    fetchCuentas();
   }, []);
 
-  const infoInicialSeleccionada = infoIniciales?.find((info) => info.id === filtrosTemporales.infoInicialId);
+  const mesAnioSeleccionado = filtrosTemporales.fechaDesde
+    ? (() => {
+        const [y, m] = filtrosTemporales.fechaDesde.split('-').map(Number);
+        const mesStr = MESES[m - 1];
+        return mesStr ? { mes: mesStr, anio: y } : null;
+      })()
+    : null;
+  const cuentaSeleccionada = cuentas?.find((c) => c.id === filtrosTemporales.cuentaId);
   const categoriaSeleccionada = categorias?.find((c) => c.id === filtrosTemporales.categoriaId);
-  const medioPagoSeleccionado = mediosPago?.find((m) => m.id === filtrosTemporales.medioPagoId);
 
   const tipoLabel =
     filtrosTemporales.tipoMovimiento === TipoMovimientoEnum.INGRESO
@@ -77,8 +95,8 @@ export function MovimientosFilterCard({
                 onPress={() => setMesMenuVisible(true)}
               >
                 <Text style={styles.selectText}>
-                  {infoInicialSeleccionada
-                    ? formatMesSelector(infoInicialSeleccionada.mes, infoInicialSeleccionada.anio)
+                  {mesAnioSeleccionado
+                    ? formatMesSelector(mesAnioSeleccionado.mes, mesAnioSeleccionado.anio)
                     : 'Seleccionar mes'}
                 </Text>
                 <MaterialCommunityIcons name="chevron-down" size={20} color="#666666" />
@@ -88,19 +106,67 @@ export function MovimientosFilterCard({
           >
             <Menu.Item
               onPress={() => {
-                onFiltrosChange({ ...filtrosTemporales, infoInicialId: undefined });
+                onFiltrosChange({
+                  ...filtrosTemporales,
+                  fechaDesde: undefined,
+                  fechaHasta: undefined,
+                });
                 setMesMenuVisible(false);
               }}
               title="Todos los meses"
             />
-            {infoIniciales?.map((info: InfoInicialResponse) => (
+            {mesesDisponibles.map((item) => (
               <Menu.Item
-                key={info.id}
+                key={`${item.mes}-${item.anio}`}
                 onPress={() => {
-                  onFiltrosChange({ ...filtrosTemporales, infoInicialId: info.id });
+                  const { fechaDesde, fechaHasta } = getFechasDelMes(item.mes, item.anio);
+                  onFiltrosChange({
+                    ...filtrosTemporales,
+                    fechaDesde,
+                    fechaHasta,
+                  });
                   setMesMenuVisible(false);
                 }}
-                title={formatMesSelector(info.mes, info.anio)}
+                title={formatMesSelector(item.mes, item.anio)}
+              />
+            ))}
+          </Menu>
+        </View>
+
+        {/* Cuenta */}
+        <View style={styles.filterRow}>
+          <Text variant="bodyMedium" style={filterLabelStyle}>Cuenta</Text>
+          <Menu
+            visible={cuentaMenuVisible}
+            onDismiss={() => setCuentaMenuVisible(false)}
+            anchor={
+              <TouchableOpacity
+                style={[styles.filterSelect, filterSelectStyle]}
+                onPress={() => setCuentaMenuVisible(true)}
+              >
+                <Text style={styles.selectText}>
+                  {cuentaSeleccionada ? cuentaSeleccionada.nombre : 'Todas las cuentas'}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color="#666666" />
+              </TouchableOpacity>
+            }
+            contentStyle={styles.menuContent}
+          >
+            <Menu.Item
+              onPress={() => {
+                onFiltrosChange({ ...filtrosTemporales, cuentaId: undefined });
+                setCuentaMenuVisible(false);
+              }}
+              title="Todas las cuentas"
+            />
+            {cuentas?.map((c: CuentaItemResponse) => (
+              <Menu.Item
+                key={c.id}
+                onPress={() => {
+                  onFiltrosChange({ ...filtrosTemporales, cuentaId: c.id });
+                  setCuentaMenuVisible(false);
+                }}
+                title={c.nombre}
               />
             ))}
           </Menu>
@@ -172,31 +238,6 @@ export function MovimientosFilterCard({
           labelStyle={filterLabelStyle}
         />
 
-        {/* Medio de Pago */}
-        <SelectTriggerField
-          label="Medio de pago"
-          placeholder="Seleccionar medio de pago"
-          selectedContent={
-            medioPagoSeleccionado ? (
-              <View style={styles.selectedRow}>
-                <MaterialCommunityIcons
-                  name={medioPagoSeleccionado.tipo === 'BILLETERA_VIRTUAL' ? 'wallet' : 'bank'}
-                  size={20}
-                  color="#6CB4EE"
-                  style={styles.selectIcon}
-                />
-                <Text variant="bodyMedium" style={styles.selectText}>
-                  {medioPagoSeleccionado.nombre}
-                </Text>
-              </View>
-            ) : undefined
-          }
-          onPress={() => setIsMedioPagoModalVisible(true)}
-          containerStyle={filterContainerStyle}
-          triggerStyle={filterSelectStyle}
-          labelStyle={filterLabelStyle}
-        />
-
         {/* Botones */}
         <FormActions
           cancelLabel="Limpiar"
@@ -216,16 +257,6 @@ export function MovimientosFilterCard({
           setIsCategoriaModalVisible(false);
         }}
         selectedValue={filtrosTemporales.categoriaId}
-      />
-
-      <MedioPagoModal
-        visible={isMedioPagoModalVisible}
-        onDismiss={() => setIsMedioPagoModalVisible(false)}
-        onSelect={(medio: MedioPago) => {
-          onFiltrosChange({ ...filtrosTemporales, medioPagoId: medio.id });
-          setIsMedioPagoModalVisible(false);
-        }}
-        selectedValue={filtrosTemporales.medioPagoId}
       />
     </Card>
   );

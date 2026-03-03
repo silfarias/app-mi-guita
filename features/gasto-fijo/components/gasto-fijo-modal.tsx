@@ -1,5 +1,6 @@
 import { CategoriaModal } from '@/features/categoria/components/categoria-modal';
 import {
+  DateInputFormField,
   MoneyInputFormField,
   SelectTriggerField,
   TextInputFormField,
@@ -17,22 +18,34 @@ import {
   GastoFijoRequest,
   GastoFijoUpdateRequest,
 } from '@/features/gasto-fijo/interfaces/gasto-fijo-request.interface';
-import { MedioPago } from '@/features/medio-pago/interfaces/medio-pago.interface';
-import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
-import { MedioPagoModal } from '@/features/medio-pago/components/medio-pago-modal';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import Toast from 'react-native-toast-message';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Switch, Text } from 'react-native-paper';
+import { SegmentedButtons, Switch, Text } from 'react-native-paper';
+
+function getDefaultDiaVencimiento(): string {
+  const d = new Date();
+  const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  return nextMonth.toISOString().split('T')[0];
+}
+
+/** Convierte diaVencimiento de la API (ISO o YYYY-MM-DD) a YYYY-MM-DD para el input. */
+function normalizeDiaVencimiento(value: string | undefined | null): string {
+  if (!value || typeof value !== 'string') return getDefaultDiaVencimiento();
+  const trimmed = value.trim();
+  if (trimmed.length >= 10) return trimmed.slice(0, 10);
+  return getDefaultDiaVencimiento();
+}
 
 interface GastoFijoItemForm {
   nombre: string;
-  montoFijo: number;
+  tipo: 'FIJO' | 'VARIABLE';
+  montoEstimado: number;
+  diaVencimiento: string;
   categoriaId: number | null;
   esDebitoAutomatico: boolean;
-  medioPagoId: number | null;
 }
 
 interface GastoFijoBulkFormValues {
@@ -91,7 +104,14 @@ export function GastoFijoModal({
   } = useForm<GastoFijoBulkFormValues>({
     defaultValues: {
       gastosFijos: [
-        { nombre: '', montoFijo: 0, categoriaId: null, esDebitoAutomatico: false, medioPagoId: null },
+        {
+          nombre: '',
+          tipo: 'FIJO',
+          montoEstimado: 0,
+          diaVencimiento: getDefaultDiaVencimiento(),
+          categoriaId: null,
+          esDebitoAutomatico: false,
+        },
       ],
     },
     mode: 'onSubmit',
@@ -106,18 +126,8 @@ export function GastoFijoModal({
   const [activeCategoriaIndex, setActiveCategoriaIndex] = useState<number | null>(null);
   const [selectedCategoriaByIndex, setSelectedCategoriaByIndex] = useState<Record<number, Categoria>>({});
   const [activo, setActivo] = useState(true);
-  const [medioPagoModalVisible, setMedioPagoModalVisible] = useState(false);
-  const [activeMedioPagoIndex, setActiveMedioPagoIndex] = useState<number | null>(null);
-  const [selectedMedioPagoByIndex, setSelectedMedioPagoByIndex] = useState<Record<number, MedioPago>>({});
 
   const scrollRef = useRef<ScrollView>(null);
-  const { data: mediosPago, fetchMediosPago } = useMediosPago();
-
-  useEffect(() => {
-    if (visible) {
-      fetchMediosPago();
-    }
-  }, [visible]);
 
   useEffect(() => {
     if (visible && isEditMode && gastoFijoId) {
@@ -134,24 +144,19 @@ export function GastoFijoModal({
   useEffect(() => {
     if (gastoFijoData && isEditMode && visible) {
       const montoNum =
-        gastoFijoData.montoFijo == null || gastoFijoData.montoFijo === ''
-          ? 0
-          : parseFloat(String(gastoFijoData.montoFijo)) || 0;
+        gastoFijoData.montoEstimado != null ? Number(gastoFijoData.montoEstimado) : 0;
+      const diaVenc = normalizeDiaVencimiento(gastoFijoData.diaVencimiento);
       replace([
         {
           nombre: gastoFijoData.nombre,
-          montoFijo: montoNum,
+          tipo: gastoFijoData.tipo === 'VARIABLE' ? 'VARIABLE' : 'FIJO',
+          montoEstimado: montoNum,
+          diaVencimiento: diaVenc,
           categoriaId: gastoFijoData.categoria.id,
           esDebitoAutomatico: gastoFijoData.esDebitoAutomatico ?? false,
-          medioPagoId: gastoFijoData.medioPago?.id ?? null,
         },
       ]);
       setSelectedCategoriaByIndex({ 0: gastoFijoData.categoria });
-      if (gastoFijoData.medioPago) {
-        setSelectedMedioPagoByIndex({ 0: gastoFijoData.medioPago });
-      } else {
-        setSelectedMedioPagoByIndex({});
-      }
       setActivo(gastoFijoData.activo ?? true);
     }
   }, [gastoFijoData, isEditMode, visible, replace]);
@@ -162,19 +167,17 @@ export function GastoFijoModal({
         gastosFijos: [
           {
             nombre: '',
-            montoFijo: 0,
+            tipo: 'FIJO',
+            montoEstimado: 0,
+            diaVencimiento: getDefaultDiaVencimiento(),
             categoriaId: null,
             esDebitoAutomatico: false,
-            medioPagoId: null,
           },
         ],
       });
       setSelectedCategoriaByIndex({});
-      setSelectedMedioPagoByIndex({});
       setActiveCategoriaIndex(null);
-      setActiveMedioPagoIndex(null);
       setCategoriaModalVisible(false);
-      setMedioPagoModalVisible(false);
       setActivo(true);
       resetCreate();
       resetUpdate();
@@ -189,21 +192,14 @@ export function GastoFijoModal({
       });
       return next;
     });
-    setSelectedMedioPagoByIndex((prev) => {
-      const next: Record<number, MedioPago> = {};
-      Object.entries(prev).forEach(([k, v]) => {
-        next[Number(k) + 1] = v;
-      });
-      return next;
-    });
     prepend({
       nombre: '',
-      montoFijo: 0,
+      tipo: 'FIJO',
+      montoEstimado: 0,
+      diaVencimiento: getDefaultDiaVencimiento(),
       categoriaId: null,
       esDebitoAutomatico: false,
-      medioPagoId: null,
     });
-    // Hacer scroll al tope para que el usuario vea el nuevo item agregado arriba
     setTimeout(() => {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     }, 50);
@@ -227,24 +223,15 @@ export function GastoFijoModal({
         });
         return;
       }
-      if (primerItem.esDebitoAutomatico && (!primerItem.medioPagoId || primerItem.medioPagoId <= 0)) {
-        Toast.show({
-          type: 'error',
-          text1: 'Débito automático',
-          text2: 'Selecciona el medio de pago por el que se realiza el cobro (no puede ser efectivo)',
-          position: 'top',
-          visibilityTime: 3000,
-        });
-        return;
-      }
       try {
         const payload: GastoFijoUpdateRequest = {
           nombre: primerItem.nombre.trim(),
-          montoFijo: primerItem.montoFijo ?? 0,
+          tipo: primerItem.tipo,
+          montoEstimado: primerItem.montoEstimado ?? 0,
+          diaVencimiento: primerItem.diaVencimiento || getDefaultDiaVencimiento(),
           categoriaId: primerItem.categoriaId,
           activo,
           esDebitoAutomatico: primerItem.esDebitoAutomatico,
-          medioPagoId: primerItem.esDebitoAutomatico ? primerItem.medioPagoId ?? undefined : undefined,
         };
         await update(gastoFijoId, payload);
         Toast.show({
@@ -265,26 +252,13 @@ export function GastoFijoModal({
     const itemsValidos = data.gastosFijos.filter(
       (gf) => gf.nombre.trim() !== '' && gf.categoriaId != null && gf.categoriaId > 0
     );
-    const algunoDebitoSinMedio = itemsValidos.some(
-      (gf) => gf.esDebitoAutomatico && (!gf.medioPagoId || gf.medioPagoId <= 0)
-    );
-    if (algunoDebitoSinMedio) {
-      Toast.show({
-        type: 'error',
-        text1: 'Débito automático',
-        text2: 'Si el gasto es débito automático, selecciona el medio de pago del cobro (no puede ser efectivo)',
-        position: 'top',
-        visibilityTime: 3000,
-      });
-      return;
-    }
     const gastosFijosFiltrados: GastoFijoRequest[] = itemsValidos.map((gf) => ({
       nombre: gf.nombre.trim(),
-      montoFijo: gf.montoFijo ?? 0,
+      tipo: gf.tipo,
+      montoEstimado: gf.montoEstimado ?? 0,
+      diaVencimiento: gf.diaVencimiento || getDefaultDiaVencimiento(),
       categoriaId: gf.categoriaId!,
       esDebitoAutomatico: gf.esDebitoAutomatico ?? false,
-      medioPagoId:
-        gf.esDebitoAutomatico && gf.medioPagoId && gf.medioPagoId > 0 ? gf.medioPagoId : undefined,
     }));
 
     if (gastosFijosFiltrados.length === 0) {
@@ -458,19 +432,43 @@ export function GastoFijoModal({
                 disabled={loading}
               />
 
+              <Controller
+                control={control}
+                name={`gastosFijos.${index}.tipo`}
+                render={({ field: { value, onChange } }) => (
+                  <View style={styles.tipoRow}>
+                    <Text variant="bodyMedium" style={styles.tipoLabel}>
+                      Tipo
+                    </Text>
+                    <SegmentedButtons
+                      value={value}
+                      onValueChange={(v) => onChange(v as 'FIJO' | 'VARIABLE')}
+                      buttons={[
+                        { value: 'FIJO', label: 'Fijo', disabled: loading },
+                        { value: 'VARIABLE', label: 'Variable', disabled: loading },
+                      ]}
+                      style={styles.tipoSegmented}
+                    />
+                  </View>
+                )}
+              />
+
               <MoneyInputFormField
                 control={control}
-                name={`gastosFijos.${index}.montoFijo`}
+                name={`gastosFijos.${index}.montoEstimado`}
                 rules={{ min: { value: 0, message: 'El monto no puede ser negativo' } }}
                 errors={errors}
-                label="Monto fijo"
+                label="Monto estimado"
                 placeholder="0.00"
                 disabled={loading}
               />
-              <Text variant="bodySmall" style={styles.montoHint}>
-                Si desconoces el monto o no es fijo, puedes dejarlo en 0 y registrarlo cuando
-                realices el pago.
-              </Text>
+              <DateInputFormField
+                control={control}
+                name={`gastosFijos.${index}.diaVencimiento`}
+                errors={errors}
+                label="Día de vencimiento"
+                disabled={loading}
+              />
 
               <Controller
                 control={control}
@@ -482,77 +480,12 @@ export function GastoFijoModal({
                     </Text>
                     <Switch
                       value={value}
-                      onValueChange={(v) => {
-                        onChange(v);
-                        if (!v) {
-                          setSelectedMedioPagoByIndex((prev) => {
-                            const next = { ...prev };
-                            delete next[index];
-                            return next;
-                          });
-                        }
-                      }}
+                      onValueChange={onChange}
                       color="#6CB4EE"
                       disabled={loading}
                     />
                   </View>
                 )}
-              />
-              <Controller
-                control={control}
-                name={`gastosFijos.${index}.medioPagoId`}
-                render={({ field: { value, onChange } }) => {
-                  const esDebito = watch(`gastosFijos.${index}.esDebitoAutomatico`);
-                  const medio = selectedMedioPagoByIndex[index] ?? mediosPago?.find((m) => m.id === value);
-                  if (!esDebito) return <View />;
-                  return (
-                    <>
-                      <SelectTriggerField
-                        label="Medio de pago del cobro"
-                        placeholder="Seleccionar medio (no efectivo)"
-                        selectedContent={
-                          medio ? (
-                            <View style={selectItemRow}>
-                              <MaterialCommunityIcons
-                                name={medio.tipo === 'BANCO' ? 'bank' : 'wallet'}
-                                size={20}
-                                color="#6CB4EE"
-                                style={selectItemIcon}
-                              />
-                              <Text variant="bodyMedium" style={{ color: '#333333', fontWeight: '500' }}>
-                                {medio.nombre}
-                              </Text>
-                            </View>
-                          ) : undefined
-                        }
-                        onPress={() => {
-                          setActiveMedioPagoIndex(index);
-                          setMedioPagoModalVisible(true);
-                        }}
-                        error={errors.gastosFijos?.[index]?.medioPagoId?.message}
-                        disabled={loading}
-                      />
-                      {activeMedioPagoIndex === index && (
-                        <MedioPagoModal
-                          visible={medioPagoModalVisible}
-                          onDismiss={() => {
-                            setMedioPagoModalVisible(false);
-                            setActiveMedioPagoIndex(null);
-                          }}
-                          onSelect={(m) => {
-                            onChange(m.id);
-                            setSelectedMedioPagoByIndex((prev) => ({ ...prev, [index]: m }));
-                            setMedioPagoModalVisible(false);
-                            setActiveMedioPagoIndex(null);
-                          }}
-                          selectedValue={value ?? undefined}
-                          disabled={loading}
-                          excludeEfectivo
-                        />
-                      )}
-                    </>
-                  );
-                }}
               />
 
               {isEditMode && index === 0 && (
@@ -659,13 +592,6 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     paddingHorizontal: 4,
   },
-  montoHint: {
-    marginLeft: 3,
-    marginTop: 4,
-    color: '#666666',
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
   debitoRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -692,5 +618,17 @@ const styles = StyleSheet.create({
   activoLabel: {
     color: '#333333',
     fontWeight: '500',
+  },
+  tipoRow: {
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  tipoLabel: {
+    color: '#666666',
+    marginBottom: 5,
+    fontWeight: '500',
+  },
+  tipoSegmented: {
+    marginTop: 0,
   },
 });

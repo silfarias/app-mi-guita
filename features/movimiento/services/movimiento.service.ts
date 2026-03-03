@@ -1,4 +1,11 @@
-import { MovimientoRequest, MovimientoResponse, MovimientoSearchResponse, MovimientosPorInfoSearchResponse, MovimientoFiltros } from "../interfaces/movimiento.interface";
+import {
+  MovimientoRequest,
+  MovimientoResponse,
+  MovimientoSearchResponse,
+  MovimientoFiltros,
+  MovimientosAgrupadoPorCuentaResponse,
+} from "../interfaces/movimiento.interface";
+import { SearchResponse } from "@/types/api.types";
 import { fetchAuthDelete, fetchAuthGet, fetchAuthPatch, fetchAuthPost, buildSearchQuery } from "@/utils/api-client";
 
 export class MovimientoService {
@@ -9,22 +16,23 @@ export class MovimientoService {
   }
 
   async update(token: string, id: string, request: Partial<MovimientoRequest>): Promise<MovimientoResponse> {
-    const { infoInicialId: _omit, ...payload } = request ?? {};
-    return fetchAuthPatch<MovimientoResponse, Partial<Omit<MovimientoRequest, 'infoInicialId'>>>(token, `/movimiento/${id}`, payload, {
+    const { cuentaId: _omit, ...payload } = request ?? {};
+    return fetchAuthPatch<MovimientoResponse, Partial<Omit<MovimientoRequest, 'cuentaId'>>>(token, `/movimiento/${id}`, payload, {
       defaultError: "Error al actualizar el movimiento",
     });
   }
 
-  async getByInfoInicial(token: string): Promise<MovimientosPorInfoSearchResponse> {
-    return fetchAuthGet<MovimientosPorInfoSearchResponse>(token, "/movimiento/por-info", {
-      defaultError: "Error al obtener los movimientos",
+  async agrupado(token: string, filtros?: MovimientoFiltros): Promise<MovimientosAgrupadoPorCuentaResponse> {
+    const query = buildSearchQuery(filtros as unknown as Record<string, string | number | boolean | undefined | null>);
+    return fetchAuthGet<MovimientosAgrupadoPorCuentaResponse>(token, `/movimiento/agrupado${query}`, {
+      defaultError: "Error al obtener los movimientos agrupados",
     });
   }
 
-  async search(token: string, filtros?: MovimientoFiltros): Promise<MovimientosPorInfoSearchResponse> {
+  async search(token: string, filtros?: MovimientoFiltros): Promise<SearchResponse<MovimientoSearchResponse>> {
     const query = buildSearchQuery(filtros as unknown as Record<string, string | number | boolean | undefined | null>);
-    return fetchAuthGet<MovimientosPorInfoSearchResponse>(token, `/movimiento/por-info${query}`, {
-      defaultError: "Error al obtener los movimientos",
+    return fetchAuthGet<SearchResponse<MovimientoSearchResponse>>(token, `/movimiento/search${query}`, {
+      defaultError: "Error al buscar movimientos",
     });
   }
 

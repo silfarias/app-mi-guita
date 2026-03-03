@@ -9,6 +9,8 @@ export interface SearchRequest {
   sortBy: string;
   pageSize: number;
   pageNumber: number;
+  q?: string;
+  id?: number;
 }
 
 export interface SearchResponse<T> {

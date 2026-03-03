@@ -1,4 +1,4 @@
-import { UsuarioInfoInicial } from "@/features/info-inicial/interfaces/info-inicial.interface";
+import { UsuarioInfoInicial } from "@/features/auth/interfaces/usuario.interface";
 import { MedioPagoElemento } from "@/features/medio-pago/interfaces/medio-pago.interface";
 
 export interface InfoInicialResumen {

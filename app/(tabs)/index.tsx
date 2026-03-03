@@ -2,20 +2,25 @@ import { BalanceCard } from '@/components/balance-card';
 import { ComparacionMesAnterior } from '@/components/comparacion-mes-anterior';
 import { ConfirmacionModal } from '@/components/confirmacion-modal';
 import { GastosFijosResumenCard } from '@/components/gastos-fijos-resumen-card';
+import { MovimientoListRow } from '@/components/movimiento-list-row';
+import { PresupuestosSection } from '@/components/presupuestos-section';
 import { GraficoTortaCategorias } from '@/features/categoria/components/grafico-torta-categorias';
 import { ResumenCards } from '@/components/resumen-cards';
 import { SaldosPorMedioPago } from '@/features/medio-pago/components/saldos-por-medio-pago';
 import { SideMenu, SideMenuItem } from '@/components/side-menu';
 import { Top5Categorias } from '@/features/categoria/components/top5-categorias';
 import { useLogout } from '@/features/auth/hooks/auth.hook';
+import { CuentaModal } from '@/features/cuenta/components/cuenta-modal';
+import { useCuentas } from '@/features/cuenta/hooks/cuenta.hook';
 import { GastoFijoModal } from '@/features/gasto-fijo/components/gasto-fijo-modal';
 import { useMisGastosFijos } from '@/features/gasto-fijo/hooks/gasto-fijo.hook';
 import { MovimientoCard } from '@/features/movimiento/components/movimiento-card';
 import { MovimientoModal } from '@/features/movimiento/components/movimiento-modal';
-import { useDeleteMovimiento, useMovimientosPorInfo } from '@/features/movimiento/hooks/movimiento.hook';
+import { useDeleteMovimiento, useMovimientosAgrupadosPorCuenta } from '@/features/movimiento/hooks/movimiento.hook';
 import { useDashboardResumen } from '@/features/dashboard/hooks/dashboard.hook';
 import { useAuthStore } from '@/store/auth.store';
 import { getCurrentMonth, getCurrentYear } from '@/utils/date';
+import { AddFAB } from '@/common/components';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -29,6 +34,7 @@ export default function HomeScreen() {
   const [isMovimientoModalVisible, setIsMovimientoModalVisible] = useState(false);
   const [isConfirmacionModalVisible, setIsConfirmacionModalVisible] = useState(false);
   const [isGastoFijoModalVisible, setIsGastoFijoModalVisible] = useState(false);
+  const [isCuentaModalVisible, setIsCuentaModalVisible] = useState(false);
   const [movimientoSeleccionado, setMovimientoSeleccionado] = useState<number | null>(null);
   const [menuVisible, setMenuVisible] = useState<number | null>(null);
   const [movimientosExpandidos, setMovimientosExpandidos] = useState<Set<number>>(new Set());
@@ -37,7 +43,8 @@ export default function HomeScreen() {
   const user = useAuthStore((state) => state.usuario?.persona?.nombre || 'Usuario');
   const usuarioFotoPerfil = useAuthStore((state) => state.usuario?.fotoPerfil);
   const { logout, loading: logoutLoading } = useLogout();
-  const { data: movimientosData, loading: movimientosLoading, error: movimientosError, fetchMovimientos } = useMovimientosPorInfo();
+  const { data: movimientosData, loading: movimientosLoading, error: movimientosError, fetchMovimientos } = useMovimientosAgrupadosPorCuenta();
+  const { fetch: fetchCuentas } = useCuentas();
   const { deleteMovimiento, loading: deleting } = useDeleteMovimiento();
   const { data: gastosFijosData, loading: loadingGastosFijos, fetchMisGastosFijos } = useMisGastosFijos();
 
@@ -78,21 +85,19 @@ export default function HomeScreen() {
         : require('../../assets/images/icon.png'),
     },
     {
-      icon: 'receipt-text',
-      label: 'Informacion Inicial del Mes',
-      onPress: () => {
-        closeMenu();
-        router.push('/info-inicial-mes' as any);
-      },
-      disabled: loadingGastosFijos,
-      loading: loadingGastosFijos,
-    },
-    {
       icon: 'format-list-bulleted',
       label: 'Resumen Mensual',
       onPress: () => {
         closeMenu();
         router.push('/consultas-historicas' as any);
+      },
+    },
+    {
+      icon: 'wallet-plus',
+      label: 'Agregar cuenta',
+      onPress: () => {
+        closeMenu();
+        setIsCuentaModalVisible(true);
       },
     },
     {
@@ -110,8 +115,9 @@ export default function HomeScreen() {
     
   ];
 
-  // Obtener movimientos del mes actual (últimos 5)
-  const movimientosDelMes = movimientosData?.data?.[0]?.movimientos || [];
+  // Obtener movimientos del mes actual (agrupado por cuenta: data[].movimientos)
+  const grupos = movimientosData?.data ?? [];
+  const movimientosDelMes = grupos.flatMap((g) => g.movimientos ?? []);
   const ultimosMovimientos = movimientosDelMes.slice(0, 5);
 
 
@@ -165,7 +171,7 @@ export default function HomeScreen() {
     fetchMisGastosFijos();
   };
 
-  const isLoading = movimientosLoading || dashboardLoading;
+  const isLoading = dashboardLoading || movimientosLoading;
 
   return (
     <View style={styles.container}>
@@ -174,7 +180,7 @@ export default function HomeScreen() {
         <View style={styles.headerContent}>
           <View>
             <Text variant="headlineSmall" style={styles.title}>
-              Hola, {user}
+              Hola, {user} 💙
             </Text>
             <Text variant="bodySmall" style={styles.subtitle}>
               {currentMonth} {currentYear}
@@ -228,16 +234,20 @@ export default function HomeScreen() {
             {/* Dashboard - Resumen Principal (usa /dashboard) */}
             {dashboard && (
               <>
-                {/* Cards de Resumen */}
+                {/* Balance */}
+                <BalanceCard
+                  balanceTotal={dashboard.saldoTotal}
+                  balanceMes={dashboard.balanceMes}
+                  subtitleLabel="Disponible"
+                />
+
+                {/* Resumen rápido: Ingresos / Egresos */}
                 <ResumenCards
                   totalIngresos={dashboard.ingresosMes}
                   totalEgresos={dashboard.egresosMes}
                 />
 
-                {/* Balance Total */}
-                <BalanceCard balanceTotal={dashboard.saldoTotal} balanceMes={dashboard.balanceMes} />
-
-                {/* Gastos fijos resumen (a partir de presupuestos / alertas) */}
+                {/* Gastos fijos resumen */}
                 {dashboard.presupuestos && dashboard.presupuestos.length > 0 && (
                   <GastosFijosResumenCard
                     pagados={dashboard.presupuestos.filter((p) => p.estado === 'OK').length}
@@ -245,7 +255,12 @@ export default function HomeScreen() {
                   />
                 )}
 
-                {/* Estado del mes con mensaje humano */}
+                {/* Presupuestos (barras de progreso) */}
+                {dashboard.presupuestos && dashboard.presupuestos.length > 0 && (
+                  <PresupuestosSection presupuestos={dashboard.presupuestos} />
+                )}
+
+                {/* Estado del mes */}
                 <ComparacionMesAnterior
                   comparacion={{
                     mensaje:
@@ -258,7 +273,7 @@ export default function HomeScreen() {
                   } as any}
                 />
 
-                {/* Gráfico de Torta */}
+                {/* Gráfico: Gastos por categoría */}
                 {dashboard.gastosPorCategoria && dashboard.gastosPorCategoria.length > 0 && (
                   <GraficoTortaCategorias
                     data={dashboard.gastosPorCategoria.map((item) => ({
@@ -309,28 +324,16 @@ export default function HomeScreen() {
               </>
             )}
 
-            {/* Botón crear movimiento */}
-            <Button
-              mode="contained"
-              onPress={() => setIsMovimientoModalVisible(true)}
-              style={styles.createButton}
-              contentStyle={styles.createButtonContent}
-              labelStyle={styles.createButtonLabel}
-              icon="plus-circle"
-            >
-              Crear Movimiento
-            </Button>
+            {/* FAB Agregar movimiento (reemplaza el botón fijo) */}
           </>
         )}
 
-
-
-        {/* Últimos Movimientos (máximo 5) */}
+        {/* 📌 Últimos movimientos */}
         {true && (
           <>
             {isLoading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#6CB4EE" />
+                <ActivityIndicator size="large" color="#4DA6FF" />
                 <Text variant="bodyMedium" style={styles.loadingText}>
                   Cargando información...
                 </Text>
@@ -362,7 +365,7 @@ export default function HomeScreen() {
                       No hay movimientos
                     </Text>
                     <Text variant="bodyMedium" style={styles.emptyText}>
-                      Comienza registrando tu primer movimiento del mes
+                      Tocá el botón + para agregar tu primer movimiento
                     </Text>
                   </View>
                 </Card.Content>
@@ -370,13 +373,13 @@ export default function HomeScreen() {
             ) : (
               <View style={styles.movimientosContainer}>
                 <View style={styles.sectionHeader}>
-                  <MaterialCommunityIcons name="clock-outline" size={24} color="#6CB4EE" />
+                  <MaterialCommunityIcons name="clock-outline" size={24} color="#4DA6FF" />
                   <Text variant="titleMedium" style={styles.sectionTitle}>
-                    Últimos Movimientos
+                    Últimos movimientos
                   </Text>
                   {movimientosDelMes.length > 5 && (
                     <TouchableOpacity
-                      onPress={() => router.push('/(tabs)/explore' as any)}
+                      onPress={() => router.push('/(tabs)/movimientos' as any)}
                       style={styles.verTodosButton}
                     >
                       <Text variant="bodySmall" style={styles.verTodosText}>
@@ -385,28 +388,31 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-                {ultimosMovimientos.map((movimiento) => {
-                  const isExpanded = movimientosExpandidos.has(movimiento.id);
-                  return (
-                    <MovimientoCard
-                      key={movimiento.id}
-                      movimiento={movimiento}
-                      isExpanded={isExpanded}
-                      onPress={() => toggleMovimientoExpandido(movimiento.id)}
-                      onEdit={handleEditarMovimiento}
-                      onDelete={handleEliminarMovimiento}
-                      menuVisible={menuVisible === movimiento.id}
-                      onMenuOpen={() => setMenuVisible(movimiento.id)}
-                      onMenuClose={() => setMenuVisible(null)}
-                      showMenu={true}
-                    />
-                  );
-                })}
+                {ultimosMovimientos.map((movimiento) => (
+                  <MovimientoListRow
+                    key={movimiento.id}
+                    descripcion={movimiento.descripcion}
+                    monto={typeof movimiento.monto === 'string' ? parseFloat(movimiento.monto) : movimiento.monto}
+                    tipoMovimiento={movimiento.tipoMovimiento}
+                    onPress={() => {
+                      setMovimientoSeleccionado(movimiento.id);
+                      setIsMovimientoModalVisible(true);
+                    }}
+                  />
+                ))}
               </View>
             )}
           </>
         )}
       </ScrollView>
+
+      {/* FAB Agregar movimiento */}
+      <AddFAB
+        onPress={() => setIsMovimientoModalVisible(true)}
+        icon="plus"
+        label="Agregar movimiento"
+        backgroundColor="#4DA6FF"
+      />
 
       {/* Menú lateral */}
       <SideMenu visible={isMenuOpen} onClose={closeMenu} items={menuItems} />
@@ -447,6 +453,15 @@ export default function HomeScreen() {
         confirmText="Eliminar"
         cancelText="Cancelar"
         loading={deleting}
+      />
+
+      {/* Modal Agregar cuenta */}
+      <CuentaModal
+        visible={isCuentaModalVisible}
+        onDismiss={() => setIsCuentaModalVisible(false)}
+        onSuccess={() => {
+          fetchCuentas();
+        }}
       />
     </View>
   );

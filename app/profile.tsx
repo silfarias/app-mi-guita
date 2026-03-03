@@ -7,25 +7,50 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Card, Text } from 'react-native-paper';
+import { Card, Text, Button } from 'react-native-paper';
 
 import { BoxProfile } from '@/components/box-profile';
 import { ChangePasswordModal } from '@/features/auth/components/change-password-modal';
 import { EditUserModal } from '@/features/auth/components/edit-user-modal';
+import { VerifyEmailModal } from '@/features/auth/components/verify-email-modal';
 import { SettingsRow } from '@/components/settings-row';
 import { Header } from '@/components/ui/header';
 import { ErrorStateCard, LoadingStateBlock } from '@/common/components';
-import { useProfile } from '@/features/auth/hooks/auth.hook';
+import { useProfile, useSendVerificationEmail } from '@/features/auth/hooks/auth.hook';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 
 export default function ProfileScreen() {
   const { usuario, loading, error, fetchProfile } = useProfile();
+  const { sendVerificationEmail, loading: sendingEmail } = useSendVerificationEmail();
   const [isChangePasswordModalVisible, setIsChangePasswordModalVisible] = useState(false);
   const [isEditUserModalVisible, setIsEditUserModalVisible] = useState(false);
+  const [isVerifyEmailModalVisible, setIsVerifyEmailModalVisible] = useState(false);
 
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const handleSendVerificationEmail = async () => {
+    const ok = await sendVerificationEmail();
+    if (ok) {
+      Toast.show({
+        type: 'success',
+        text1: 'Correo enviado',
+        text2: 'Revisá tu bandeja de entrada y seguí las instrucciones para verificar tu email.',
+        position: 'top',
+        visibilityTime: 4000,
+      });
+    } else {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'No se pudo enviar el correo de verificación. Intentá de nuevo más tarde.',
+        position: 'top',
+        visibilityTime: 3000,
+      });
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -73,7 +98,60 @@ export default function ProfileScreen() {
           <View style={styles.infoContainer}>
             <BoxProfile icon="account" title="Nombre Completo" value={usuario.persona.nombre + ' ' + usuario.persona.apellido} />
             <BoxProfile icon="account-circle" title="Nombre de Usuario" value={usuario.nombreUsuario} />
-            <BoxProfile icon="email" title="Email" value={usuario.email} />
+            <View style={styles.emailCard}>
+              <View style={styles.infoHeader}>
+                <MaterialCommunityIcons name="email" size={20} color="#6CB4EE" />
+                <Text variant="titleMedium" style={styles.infoLabel}>
+                  Email
+                </Text>
+              </View>
+              <Text variant="bodyLarge" style={styles.infoValue}>
+                {usuario.email}
+              </Text>
+              <View style={styles.emailVerificationRow}>
+                <View style={[
+                  styles.verificationBadge,
+                  usuario.emailVerificado ? styles.verificationBadgeVerified : styles.verificationBadgeNotVerified,
+                ]}>
+                  <MaterialCommunityIcons
+                    name={usuario.emailVerificado ? 'check-circle' : 'alert-circle-outline'}
+                    size={18}
+                    color={usuario.emailVerificado ? '#2E7D32' : '#E65100'}
+                    style={styles.verificationBadgeIcon}
+                  />
+                  <Text variant="bodyMedium" style={[
+                    styles.verificationBadgeText,
+                    { color: usuario.emailVerificado ? '#2E7D32' : '#E65100' },
+                  ]}>
+                    {usuario.emailVerificado ? 'Correo verificado' : 'Correo no verificado'}
+                  </Text>
+                </View>
+                {!usuario.emailVerificado && (
+                  <View style={styles.verificationActions}>
+                    <Button
+                      mode="outlined"
+                      onPress={handleSendVerificationEmail}
+                      loading={sendingEmail}
+                      disabled={sendingEmail}
+                      style={styles.verifyButton}
+                      compact
+                    >
+                      Enviar correo de verificación
+                    </Button>
+                    <Button
+                      mode="text"
+                      onPress={() => setIsVerifyEmailModalVisible(true)}
+                      disabled={sendingEmail}
+                      style={styles.verifyCodeButton}
+                      compact
+                      textColor="#6CB4EE"
+                    >
+                      Ya tengo el código
+                    </Button>
+                  </View>
+                )}
+              </View>
+            </View>
           </View>
 
           <View style={styles.settingsContainer}>
@@ -114,6 +192,16 @@ export default function ProfileScreen() {
           visible={isChangePasswordModalVisible}
           onDismiss={() => setIsChangePasswordModalVisible(false)}
           email={usuario.email}
+        />
+      )}
+
+      {usuario && (
+        <VerifyEmailModal
+          visible={isVerifyEmailModalVisible}
+          onDismiss={() => setIsVerifyEmailModalVisible(false)}
+          onSuccess={() => {
+            fetchProfile();
+          }}
         />
       )}
     </View>
@@ -193,5 +281,64 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#F0F0F0',
     marginHorizontal: 16,
+  },
+  emailCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+  },
+  infoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  infoLabel: {
+    color: '#666666',
+    fontWeight: '600',
+  },
+  infoValue: {
+    color: '#333333',
+    marginLeft: 28,
+  },
+  emailVerificationRow: {
+    marginLeft: 28,
+    marginTop: 12,
+    gap: 12,
+  },
+  verificationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  verificationBadgeVerified: {
+    backgroundColor: '#E8F5E9',
+  },
+  verificationBadgeNotVerified: {
+    backgroundColor: '#FFF3E0',
+  },
+  verificationBadgeIcon: {
+    marginRight: 6,
+  },
+  verificationBadgeText: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  verificationActions: {
+    flexDirection: 'column',
+    gap: 8,
+    marginTop: 4,
+  },
+  verifyButton: {
+    alignSelf: 'flex-start',
+    borderColor: '#6CB4EE',
+  },
+  verifyCodeButton: {
+    alignSelf: 'flex-start',
   },
 });

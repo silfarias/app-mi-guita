@@ -1,20 +1,31 @@
-import { fetchAuthPost } from "@/utils/api-client";
-
-export interface CuentaBulkItem {
-  nombre: string;
-  tipo: string;
-  saldoInicial: number;
-}
-
-export interface CuentaBulkRequest {
-  cuentas: CuentaBulkItem[];
-}
+import { fetchAuthGet, fetchAuthPost } from "@/utils/api-client";
+import {
+  CuentaBulkRequest,
+  CuentaBulkResponse,
+  CuentaItemResponse,
+  CuentaListResponse,
+} from "../interfaces/cuenta.interface";
 
 export class CuentaService {
-  async createBulk(token: string, body: CuentaBulkRequest) {
-    return fetchAuthPost(token, "/cuenta/bulk", body, {
-      defaultError: "Error al registrar tus cuentas",
+
+  async getByUsuario(token: string): Promise<CuentaListResponse> {
+    return fetchAuthGet<CuentaListResponse>(token, "/cuenta/list", {
+      defaultError: "Error al obtener las cuentas",
     });
+  }
+
+  async createBulk(
+    token: string,
+    body: CuentaBulkRequest
+  ): Promise<CuentaBulkResponse> {
+    return fetchAuthPost<CuentaBulkResponse, CuentaBulkRequest>(
+      token,
+      "/cuenta/bulk",
+      body,
+      {
+        defaultError: "Error al registrar tus cuentas",
+      }
+    );
   }
 }
 

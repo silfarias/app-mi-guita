@@ -5,6 +5,7 @@ import { StyleSheet } from 'react-native';
 export interface AddFABProps {
   onPress: () => void;
   icon?: string;
+  label?: string;
   color?: string;
   backgroundColor?: string;
 }
@@ -12,6 +13,7 @@ export interface AddFABProps {
 export function AddFAB({
   onPress,
   icon = 'plus',
+  label,
   color = '#FFFFFF',
   backgroundColor = '#6CB4EE',
 }: AddFABProps) {
@@ -20,6 +22,7 @@ export function AddFAB({
   return (
     <FAB
       icon={icon as any}
+      label={label}
       style={[styles.fab, { bottom: insets.bottom + 16, backgroundColor }]}
       onPress={onPress}
       color={color}

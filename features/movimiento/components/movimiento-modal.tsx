@@ -8,11 +8,10 @@ import {
 import { PortalModalForm } from '@/common/forms';
 import { CategoriaModal } from '@/features/categoria/components/categoria-modal';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
-import { Categoria } from '@/features/categoria/interfaces/categoria.interface';
-import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
-import { MedioPagoModal } from '@/features/medio-pago/components/medio-pago-modal';
-import { useMediosPago } from '@/features/medio-pago/hooks/medio-pago.hook';
-import { MedioPago } from '@/features/medio-pago/interfaces/medio-pago.interface';
+import { Categoria, TipoCategoriaEnum } from '@/features/categoria/interfaces/categoria.interface';
+import { useCuentas } from '@/features/cuenta/hooks/cuenta.hook';
+import { CuentaItemResponse } from '@/features/cuenta/interfaces/cuenta.interface';
+import { CuentaSelectorModal } from '@/features/cuenta/components/cuenta-selector-modal';
 import {
   useMovimientoById,
   useMovimientoForm,
@@ -22,17 +21,16 @@ import {
   MovimientoRequest,
   TipoMovimientoEnum,
 } from '@/features/movimiento/interfaces/movimiento.interface';
-import { getCurrentMonth, getCurrentYear } from '@/utils/date';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller } from 'react-hook-form';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import Toast from 'react-native-toast-message';
 
 const TIPO_OPCIONES = [
   { value: TipoMovimientoEnum.INGRESO, label: 'Ingreso' },
-  { value: TipoMovimientoEnum.EGRESO, label: 'Egreso' },
+  { value: TipoMovimientoEnum.EGRESO, label: 'Egreso' }
 ];
 
 const infoBannerStyle = {
@@ -46,6 +44,10 @@ const infoBannerRow = { flexDirection: 'row' as const, alignItems: 'center' as c
 const infoBannerLabel = { marginLeft: 8, fontWeight: '600' as const, color: '#333333' };
 const selectItemRow = { flexDirection: 'row' as const, alignItems: 'center' as const, flex: 1 };
 const selectItemIcon = { marginRight: 8 };
+
+const styles = StyleSheet.create({
+  fieldSpacing: { marginBottom: 8 },
+});
 
 export interface MovimientoModalProps {
   visible: boolean;
@@ -86,29 +88,23 @@ export function MovimientoModal({
   const loading = creating || updating || loadingMovimiento;
   const error = createError || updateError;
   const categoriaId = watch('categoriaId');
-  const medioPagoId = watch('medioPagoId');
+  const cuentaId = watch('cuentaId');
 
   const { data: categorias, fetchCategorias } = useCategorias({ activo: true });
-  const { data: mediosPago, fetchMediosPago } = useMediosPago();
-  const { data: infoInicial, loading: infoInicialLoading, fetch: fetchInfoInicial } =
-    useInfoInicialPorUsuario();
+  /** Cuentas del usuario (GET /cuenta/list); se cargan al abrir el modal. */
+  const { data: cuentas, loading: cuentasLoading, fetch: fetchCuentas } = useCuentas();
 
   const [tipoMovimiento, setTipoMovimiento] = useState<TipoMovimientoEnum>(TipoMovimientoEnum.EGRESO);
   const [selectedCategoria, setSelectedCategoria] = useState<Categoria | null>(null);
-  const [selectedMedioPago, setSelectedMedioPago] = useState<MedioPago | null>(null);
+  const [selectedCuenta, setSelectedCuenta] = useState<CuentaItemResponse | null>(null);
   const [categoriaMenuVisible, setCategoriaMenuVisible] = useState(false);
-  const [medioPagoMenuVisible, setMedioPagoMenuVisible] = useState(false);
+  const [cuentaMenuVisible, setCuentaMenuVisible] = useState(false);
   const [movimientoCreado, setMovimientoCreado] = useState(false);
 
-  const currentMonth = getCurrentMonth();
-  const currentYear = getCurrentYear();
-  const infoInicialActual = useMemo(() => {
-    if (!infoInicial?.length) return null;
-    return (
-      infoInicial.find((info) => info.mes === currentMonth && info.anio === currentYear) ?? null
-    );
-  }, [infoInicial, currentMonth, currentYear]);
-  const hasInfoInicial = !!infoInicialActual;
+  const hasCuentas = cuentas && cuentas.length > 0;
+
+  /** Edición de movimiento tipo Saldo inicial: solo se puede cambiar el monto (y la fecha). */
+  const isSaldoInicial = isEditMode && movimientoData?.tipoMovimiento === TipoMovimientoEnum.SALDO_INICIAL;
 
   useEffect(() => {
     if (visible && isEditMode && movimientoId) fetchMovimientoById();
@@ -116,40 +112,53 @@ export function MovimientoModal({
 
   useEffect(() => {
     if (movimientoData && isEditMode && visible) {
-      setValue('infoInicialId', movimientoData.infoInicial.id);
+      const tipo = movimientoData.tipoMovimiento === TipoMovimientoEnum.TRANSFERENCIA
+        ? TipoMovimientoEnum.EGRESO
+        : movimientoData.tipoMovimiento;
+      setValue('cuentaId', movimientoData.cuenta.id);
       setValue('fecha', movimientoData.fecha);
-      setValue('tipoMovimiento', movimientoData.tipoMovimiento);
+      setValue('tipoMovimiento', tipo);
       setValue('descripcion', movimientoData.descripcion);
-      setValue('categoriaId', movimientoData.categoria.id);
+      setValue('categoriaId', movimientoData.categoria?.id ?? 0);
       setValue('monto', parseFloat(movimientoData.monto.toString()));
-      setValue('medioPagoId', movimientoData.medioPago.id);
-      setTipoMovimiento(movimientoData.tipoMovimiento);
-      setSelectedCategoria(movimientoData.categoria);
-      setSelectedMedioPago(movimientoData.medioPago);
+      setTipoMovimiento(tipo);
+      setSelectedCategoria(movimientoData.categoria ?? null);
+      setSelectedCuenta(movimientoData.cuenta);
     }
   }, [movimientoData, isEditMode, visible, setValue]);
 
   useEffect(() => {
     if (visible) {
-      fetchInfoInicial();
+      fetchCuentas();
       fetchCategorias({ activo: true });
-      fetchMediosPago();
       if (!isEditMode) {
         reset();
+        setValue('tipoMovimiento', TipoMovimientoEnum.EGRESO);
         setValue('fecha', new Date().toISOString().split('T')[0]);
         setTipoMovimiento(TipoMovimientoEnum.EGRESO);
         setSelectedCategoria(null);
-        setSelectedMedioPago(null);
+        setSelectedCuenta(null);
+        if (cuentas?.length === 1) {
+          setValue('cuentaId', cuentas[0].id);
+          setSelectedCuenta(cuentas[0]);
+        }
       }
       setCategoriaMenuVisible(false);
-      setMedioPagoMenuVisible(false);
+      setCuentaMenuVisible(false);
       setMovimientoCreado(false);
     } else {
       resetUpdate();
       setSelectedCategoria(null);
-      setSelectedMedioPago(null);
+      setSelectedCuenta(null);
     }
   }, [visible, isEditMode]);
+
+  useEffect(() => {
+    if (visible && !isEditMode && cuentas?.length === 1 && !selectedCuenta) {
+      setValue('cuentaId', cuentas[0].id);
+      setSelectedCuenta(cuentas[0]);
+    }
+  }, [visible, isEditMode, cuentas, selectedCuenta, setValue]);
 
   useEffect(() => {
     if (visible && !isEditMode && movimientoCreado && data && !loading && !error) {
@@ -193,10 +202,10 @@ export function MovimientoModal({
   }, [visible, isEditMode, movimientoCreado, data, updateData, loading, error, updateError, updating]);
 
   const handleFormSubmit = async (formData: MovimientoRequest) => {
-    if (!infoInicialActual) return;
+    if (!formData.cuentaId) return;
     const payload: MovimientoRequest = {
       ...formData,
-      infoInicialId: infoInicialActual.id,
+      cuentaId: formData.cuentaId,
       tipoMovimiento,
       fecha: formData.fecha || new Date().toISOString().split('T')[0],
     };
@@ -212,18 +221,17 @@ export function MovimientoModal({
     if (!loading) {
       reset();
       setCategoriaMenuVisible(false);
-      setMedioPagoMenuVisible(false);
+      setCuentaMenuVisible(false);
       setMovimientoCreado(false);
       onDismiss();
     }
   };
 
-  const customEmptyState = !hasInfoInicial ? (
+  const customEmptyState = !hasCuentas ? (
     <View style={infoBannerStyle}>
       <MaterialCommunityIcons name="alert-circle" size={48} color="#FF9800" />
       <Text variant="bodyMedium" style={{ marginTop: 12, color: '#666666', textAlign: 'center' }}>
-        No hay información inicial disponible para {currentMonth} {currentYear}. Crea una
-        información inicial primero.
+        No tenés cuentas cargadas. Agregá al menos una cuenta en el inicio para poder registrar movimientos.
       </Text>
       <Button
         mode="contained"
@@ -237,16 +245,7 @@ export function MovimientoModal({
     </View>
   ) : undefined;
 
-  const topContent = infoInicialActual ? (
-    <View style={infoBannerStyle}>
-      <View style={infoBannerRow}>
-        <MaterialCommunityIcons name="information" size={20} color="#6CB4EE" />
-        <Text variant="bodyMedium" style={infoBannerLabel}>
-          {currentMonth} {currentYear}
-        </Text>
-      </View>
-    </View>
-  ) : null;
+  const topContent = null;
 
   return (
     <PortalModalForm
@@ -258,58 +257,52 @@ export function MovimientoModal({
       error={error ?? undefined}
       submitLabel={loading ? (isEditMode ? 'Actualizando...' : 'Creando...') : isEditMode ? 'Actualizar' : 'Guardar'}
       cancelLabel="Cancelar"
-      initialLoading={infoInicialLoading}
+      initialLoading={cuentasLoading}
       customEmptyState={customEmptyState}
       topContent={topContent}
-      submitDisabled={!hasInfoInicial}
+      submitDisabled={!hasCuentas}
     >
+      {/* 1. Tipo de movimiento */}
+      <View style={styles.fieldSpacing}>
+      {isSaldoInicial ? (
+        <View style={infoBannerStyle}>
+          <Text variant="labelLarge" style={{ color: '#666666', marginBottom: 4 }}>Tipo de movimiento</Text>
+          <View style={infoBannerRow}>
+            <MaterialCommunityIcons name="bank-check" size={20} color="#6CB4EE" />
+            <Text variant="bodyLarge" style={infoBannerLabel}>Saldo inicial</Text>
+          </View>
+        </View>
+      ) : (
       <Controller
         control={control}
         name="tipoMovimiento"
         render={({ field: { onChange, value } }) => (
           <RadioGroupField
-            title="Tipo de Movimiento"
+            title="Tipo de movimiento"
             options={TIPO_OPCIONES}
             value={value}
             onChange={(v) => {
               setTipoMovimiento(v);
               onChange(v);
+              setValue('categoriaId', 0);
+              setSelectedCategoria(null);
             }}
             disabled={loading}
           />
         )}
       />
+      )}
+      </View>
 
-      <DateInputFormField
-        control={control}
-        name="fecha"
-        rules={{ required: 'La fecha es obligatoria' }}
-        errors={errors}
-        label="Fecha"
-        disabled={loading}
-      />
-
-      <TextInputFormField
-        control={control}
-        name="descripcion"
-        rules={{
-          required: 'La descripción es obligatoria',
-          minLength: { value: 3, message: 'La descripción debe tener al menos 3 caracteres' },
-        }}
-        errors={errors}
-        label="Descripción"
-        placeholder="Ej: Compra en supermercado"
-        multiline
-        numberOfLines={3}
-        disabled={loading}
-      />
-
+      {/* 2. Categoría (oculta para saldo inicial) */}
+      {!isSaldoInicial && (
+      <View style={styles.fieldSpacing}>
       <Controller
         control={control}
         name="categoriaId"
         rules={{
-          required: 'Debes seleccionar una categoría',
-          validate: (v) => v > 0 || 'Debes seleccionar una categoría',
+          validate: (v) =>
+            v > 0 || (isEditMode && movimientoData && !movimientoData.categoria) || 'Debes seleccionar una categoría',
         }}
         render={({ field: { onChange, value } }) => {
           const currentId = categoriaId ?? value;
@@ -349,12 +342,120 @@ export function MovimientoModal({
                 }}
                 selectedValue={value}
                 disabled={loading}
+                tipoMovimiento={tipoMovimiento as unknown as TipoCategoriaEnum}
               />
             </>
           );
         }}
       />
+      </View>
+      )}
 
+      {/* 3. Cuenta (solo lectura en saldo inicial) */}
+      <View style={styles.fieldSpacing}>
+      <Controller
+        control={control}
+        name="cuentaId"
+        rules={{
+          required: 'Debes seleccionar una cuenta',
+          validate: (v) => v > 0 || 'Debes seleccionar una cuenta',
+        }}
+        render={({ field: { onChange, value } }) => {
+          const currentId = cuentaId ?? value;
+          const cuenta =
+            selectedCuenta ??
+            (cuentas?.find((c) => c.id === currentId) ?? null);
+          return (
+            <>
+              {isSaldoInicial && cuenta ? (
+                <View style={infoBannerStyle}>
+                  <Text variant="labelLarge" style={{ color: '#666666', marginBottom: 4 }}>Cuenta</Text>
+                  <View style={infoBannerRow}>
+                    <MaterialCommunityIcons name="wallet" size={20} color="#6CB4EE" />
+                    <Text variant="bodyLarge" style={infoBannerLabel}>
+                      {cuenta.nombre} - ${Number(cuenta.saldoActual).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+              <SelectTriggerField
+                label="Cuenta"
+                placeholder="Selecciona una cuenta"
+                selectedContent={
+                  cuenta ? (
+                    <View style={selectItemRow}>
+                      <MaterialCommunityIcons name="wallet" size={20} color="#6CB4EE" style={selectItemIcon} />
+                      <Text variant="bodyMedium" style={{ fontWeight: '500', color: '#333333' }}>
+                        {cuenta.nombre} - ${Number(cuenta.saldoActual).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Text>
+                    </View>
+                  ) : undefined
+                }
+                onPress={() => setCuentaMenuVisible(true)}
+                error={errors.cuentaId?.message}
+                disabled={loading}
+              />
+              <CuentaSelectorModal
+                visible={cuentaMenuVisible}
+                onDismiss={() => setCuentaMenuVisible(false)}
+                onSelect={(c) => {
+                  onChange(c.id);
+                  setSelectedCuenta(c);
+                }}
+                selectedValue={value}
+                disabled={loading}
+              />
+                </>
+              )}
+            </>
+          );
+        }}
+      />
+      </View>
+
+      {/* 4. Fecha (editable siempre) */}
+      <View style={styles.fieldSpacing}>
+      <DateInputFormField
+        control={control}
+        name="fecha"
+        errors={errors}
+        label="Fecha (opcional)"
+        disabled={loading}
+      />
+      </View>
+
+      {/* 5. Descripción (solo lectura en saldo inicial) */}
+      {isSaldoInicial ? (
+        <View style={styles.fieldSpacing}>
+        <View style={infoBannerStyle}>
+          <Text variant="labelLarge" style={{ color: '#666666', marginBottom: 4 }}>Descripción</Text>
+          <Text variant="bodyLarge" style={{ marginLeft: 0, color: '#333333' }}>
+            {watch('descripcion')}
+          </Text>
+        </View>
+        </View>
+      ) : (
+      <View style={styles.fieldSpacing}>
+      <TextInputFormField
+        control={control}
+        name="descripcion"
+        rules={{
+          required: 'La descripción es obligatoria',
+          minLength: { value: 3, message: 'La descripción debe tener al menos 3 caracteres' },
+        }}
+        errors={errors}
+        label="Descripción"
+        placeholder="Ej: Compra en supermercado"
+        multiline
+        numberOfLines={3}
+        disabled={loading}
+      />
+      </View>
+      )}
+
+      {/* 6. Monto */}
+      <View style={styles.fieldSpacing}>
       <MoneyInputFormField
         control={control}
         name="monto"
@@ -367,57 +468,7 @@ export function MovimientoModal({
         placeholder="0.00"
         disabled={loading}
       />
-
-      <Controller
-        control={control}
-        name="medioPagoId"
-        rules={{
-          required: 'Debes seleccionar un medio de pago',
-          validate: (v) => v > 0 || 'Debes seleccionar un medio de pago',
-        }}
-        render={({ field: { onChange, value } }) => {
-          const currentId = medioPagoId ?? value;
-          const medio =
-            selectedMedioPago ??
-            (isEditMode && currentId > 0 ? mediosPago?.find((m: { id: number }) => m.id === currentId) : undefined);
-          return (
-            <>
-              <SelectTriggerField
-                label="Medio de Pago"
-                placeholder="Selecciona un medio de pago"
-                selectedContent={
-                  medio ? (
-                    <View style={selectItemRow}>
-                      <MaterialCommunityIcons
-                        name={medio.tipo === 'BILLETERA_VIRTUAL' ? 'wallet' : 'bank'}
-                        size={20}
-                        color="#6CB4EE"
-                        style={selectItemIcon}
-                      />
-                      <Text variant="bodyMedium" style={{ fontWeight: '500', color: '#333333' }}>
-                        {medio.nombre}
-                      </Text>
-                    </View>
-                  ) : undefined
-                }
-                onPress={() => setMedioPagoMenuVisible(true)}
-                error={errors.medioPagoId?.message}
-                disabled={loading}
-              />
-              <MedioPagoModal
-                visible={medioPagoMenuVisible}
-                onDismiss={() => setMedioPagoMenuVisible(false)}
-                onSelect={(m) => {
-                  onChange(m.id);
-                  setSelectedMedioPago(m);
-                }}
-                selectedValue={value}
-                disabled={loading}
-              />
-            </>
-          );
-        }}
-      />
+      </View>
     </PortalModalForm>
   );
 }

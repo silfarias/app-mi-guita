@@ -4,6 +4,11 @@ import { EditUserRequest, EditUserResponse } from "../interfaces/edit-user.inter
 import { LoginRequest, LoginResponse } from "../interfaces/login.interface";
 import { SignupRequest, SignupResponse } from "../interfaces/signup.interface";
 import { Usuario } from "../interfaces/usuario.interface";
+import {
+  SendVerificationEmailResponse,
+  VerifyEmailRequest,
+  VerifyEmailResponse,
+} from "../interfaces/verify-email.interface";
 
 const NETWORK_ERROR_MESSAGE = (url: string) =>
   `No se pudo conectar al servidor. Verifica que el backend esté en ${url} y la IP sea correcta.`;
@@ -174,5 +179,36 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  async sendVerificationEmail(token: string): Promise<SendVerificationEmailResponse> {
+    const response = await fetch(`${API_URL}/auth/send-verification-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.errorDetails?.message || 'Error al enviar el correo de verificación');
+    }
+    return response.json();
+  }
+
+  async verifyEmail(token: string, request: VerifyEmailRequest): Promise<VerifyEmailResponse> {
+    const response = await fetch(`${API_URL}/auth/verify-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.errorDetails?.message || 'Error al verificar el correo');
+    }
+    return response.json();
   }
 }

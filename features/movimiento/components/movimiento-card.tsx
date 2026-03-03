@@ -2,18 +2,33 @@ import {
   AmountDisplay,
   CategoriaIconBadge,
   CardActionsMenu,
-  MedioPagoLabel,
 } from '@/common/components';
 import {
   MovimientoListItem,
   MovimientoSearchResponse,
   TipoMovimientoEnum,
 } from '@/features/movimiento/interfaces/movimiento.interface';
+import { CuentaItemResponse } from '@/features/cuenta/interfaces/cuenta.interface';
 import { formatDateWithWeekday } from '@/utils/formatDate';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Card, Text } from 'react-native-paper';
 
 type MovimientoData = MovimientoListItem | MovimientoSearchResponse;
+
+const DEFAULT_CATEGORIA_ICON = 'cash';
+const DEFAULT_CATEGORIA_COLOR = '#9E9E9E';
+
+function hasCuenta(m: MovimientoData): m is MovimientoSearchResponse & { cuenta: CuentaItemResponse } {
+  return 'cuenta' in m && m.cuenta != null;
+}
+
+function getCuentaIcon(tipo: string): string {
+  if (tipo === 'EFECTIVO') return 'cash';
+  if (tipo === 'BILLETERA') return 'wallet';
+  if (tipo === 'BANCO') return 'bank';
+  return 'cash';
+}
 
 export interface MovimientoCardProps {
   movimiento: MovimientoData;
@@ -81,8 +96,8 @@ export function MovimientoCard({
           <View style={styles.header}>
             <View style={styles.left}>
               <CategoriaIconBadge
-                icono={movimiento.categoria.icono}
-                color={movimiento.categoria.color}
+                icono={movimiento.categoria?.icono ?? DEFAULT_CATEGORIA_ICON}
+                color={movimiento.categoria?.color ?? DEFAULT_CATEGORIA_COLOR}
                 size={48}
               />
               <View style={styles.info}>
@@ -96,7 +111,7 @@ export function MovimientoCard({
                 </Text>
                 <View style={styles.meta}>
                   <Text variant="bodySmall" style={styles.categoria}>
-                    {movimiento.categoria.nombre}
+                    {movimiento.categoria?.nombre ?? (movimiento.tipoMovimiento === TipoMovimientoEnum.SALDO_INICIAL ? 'Saldo inicial' : 'Sin categoría')}
                   </Text>
                   <Text variant="bodySmall" style={styles.fecha}>
                     {formatDateWithWeekday(movimiento.fecha)}
@@ -108,7 +123,15 @@ export function MovimientoCard({
               <View style={styles.rightTop}>
                 <AmountDisplay
                   amount={monto}
-                  type={movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO ? 'EGRESO' : 'INGRESO'}
+                  type={
+                    movimiento.tipoMovimiento === TipoMovimientoEnum.EGRESO
+                      ? 'EGRESO'
+                      : movimiento.tipoMovimiento === TipoMovimientoEnum.INGRESO
+                        ? 'INGRESO'
+                        : movimiento.tipoMovimiento === TipoMovimientoEnum.SALDO_INICIAL
+                          ? 'INGRESO'
+                          : 'INGRESO'
+                  }
                   variant="titleMedium"
                 />
                 {showMenu && menuActions.length > 0 && (
@@ -120,7 +143,18 @@ export function MovimientoCard({
                   />
                 )}
               </View>
-              <MedioPagoLabel tipo={movimiento.medioPago.tipo} nombre={movimiento.medioPago.nombre} />
+              {hasCuenta(movimiento) && (
+                <View style={styles.cuentaRow}>
+                  <MaterialCommunityIcons
+                    name={getCuentaIcon(movimiento.cuenta.tipo) as any}
+                    size={16}
+                    color="#6CB4EE"
+                  />
+                  <Text variant="bodySmall" style={styles.cuentaNombre}>
+                    {movimiento.cuenta.nombre}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         </Card.Content>
@@ -175,5 +209,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 4,
+  },
+  cuentaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cuentaNombre: {
+    color: '#666666',
   },
 });

@@ -4,7 +4,9 @@ import { Card, Text } from 'react-native-paper';
 
 interface BalanceCardProps {
   balanceTotal: number;
-  balanceMes: number;
+  balanceMes?: number;
+  /** Si se pasa, se muestra debajo del monto (ej. "Disponible") en lugar de "Balance del mes". */
+  subtitleLabel?: string;
 }
 
 const formatCurrency = (amount: number | string) => {
@@ -15,21 +17,21 @@ const formatCurrency = (amount: number | string) => {
   }).format(typeof amount === 'string' ? parseFloat(amount) : amount);
 };
 
-export function BalanceCard({ balanceTotal, balanceMes }: BalanceCardProps) {
+export function BalanceCard({ balanceTotal, balanceMes, subtitleLabel }: BalanceCardProps) {
   return (
     <Card style={styles.balanceCard}>
       <Card.Content>
         <View style={styles.balanceHeader}>
-          <MaterialCommunityIcons name="wallet" size={28} color="#6CB4EE" />
+          <MaterialCommunityIcons name="wallet" size={28} color="#4DA6FF" />
           <Text variant="titleMedium" style={styles.balanceLabel}>
-            Balance Total
+            Balance
           </Text>
         </View>
         <Text variant="headlineMedium" style={styles.balanceAmount}>
           {formatCurrency(balanceTotal)}
         </Text>
         <Text variant="bodySmall" style={styles.balanceSubtext}>
-          Balance del mes: {formatCurrency(balanceMes)}
+          {subtitleLabel ?? (balanceMes != null ? `Balance del mes: ${formatCurrency(balanceMes)}` : '')}
         </Text>
       </Card.Content>
     </Card>

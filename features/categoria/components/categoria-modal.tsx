@@ -1,4 +1,4 @@
-import { Categoria } from '@/features/categoria/interfaces/categoria.interface';
+import { Categoria, TipoCategoriaEnum } from '@/features/categoria/interfaces/categoria.interface';
 import { useCategorias } from '@/features/categoria/hooks/categoria.hook';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
@@ -18,6 +18,8 @@ interface CategoriaModalProps {
   onSelect: (categoria: Categoria) => void;
   selectedValue?: number;
   disabled?: boolean;
+  /** Si se define, solo se muestran categorías de este tipo (Ingreso/Egreso). Si no, se muestran todas con división por tipo. */
+  tipoMovimiento?: TipoCategoriaEnum;
 }
 
 export function CategoriaModal({
@@ -26,38 +28,38 @@ export function CategoriaModal({
   onSelect,
   selectedValue,
   disabled = false,
+  tipoMovimiento,
 }: CategoriaModalProps) {
   const [searchText, setSearchText] = useState('');
   const { data: categorias, loading: categoriasLoading, fetchCategorias } = useCategorias({ activo: true });
 
-  // Efecto para cargar todas las categorías cuando se abre el modal
+  const baseParams = () => ({ activo: true, ...(tipoMovimiento && { tipo: tipoMovimiento }) });
+
+  // Efecto para cargar categorías cuando se abre el modal (filtradas por tipo si aplica)
   useEffect(() => {
     if (visible) {
       if (!searchText) {
-        fetchCategorias({ activo: true });
+        fetchCategorias(baseParams());
       }
     } else {
-      // Resetear búsqueda cuando se cierra el modal
       setSearchText('');
     }
-  }, [visible]);
+  }, [visible, tipoMovimiento]);
 
-  // Efecto para buscar categorías cuando cambia el texto de búsqueda
+  // Efecto para buscar cuando cambia el texto (respetando tipo si aplica)
   useEffect(() => {
     if (visible && searchText && searchText.trim()) {
       const timer = setTimeout(() => {
         fetchCategorias({
-          activo: true,
+          ...baseParams(),
           nombre: searchText.trim(),
         });
-      }, 300); // Debounce de 300ms
-
+      }, 300);
       return () => clearTimeout(timer);
     } else if (visible && !searchText) {
-      // Si se limpia la búsqueda, cargar todas las categorías
-      fetchCategorias({ activo: true });
+      fetchCategorias(baseParams());
     }
-  }, [searchText, visible]);
+  }, [searchText, visible, tipoMovimiento]);
 
   const handleSelect = (categoria: Categoria) => {
     if (!disabled) {
@@ -65,6 +67,46 @@ export function CategoriaModal({
       onDismiss();
     }
   };
+
+  // Si el backend no filtró por tipo, filtrar en cliente
+  const categoriasFiltradas = tipoMovimiento
+    ? categorias.filter((c) => c.tipo === tipoMovimiento)
+    : categorias;
+
+  const categoriasIngreso = categoriasFiltradas.filter((c) => c.tipo === TipoCategoriaEnum.INGRESO);
+  const categoriasEgreso = categoriasFiltradas.filter((c) => c.tipo === TipoCategoriaEnum.EGRESO);
+  const mostrarAgrupado = !tipoMovimiento && (categoriasIngreso.length > 0 || categoriasEgreso.length > 0);
+
+  const renderCategoriaItem = (categoria: Categoria) => (
+    <TouchableOpacity
+      key={categoria.id}
+      onPress={() => handleSelect(categoria)}
+      disabled={disabled}
+      style={[styles.item, selectedValue === categoria.id && styles.itemSelected]}
+    >
+      <View style={styles.itemContent}>
+        <MaterialCommunityIcons
+          name={categoria.icono as any}
+          size={24}
+          color={categoria.color}
+          style={styles.itemIcon}
+        />
+        <View style={styles.itemTextContainer}>
+          <Text variant="bodyLarge" style={[styles.itemText, { color: categoria.color }]}>
+            {categoria.nombre}
+          </Text>
+          {categoria.descripcion && (
+            <Text variant="bodySmall" style={styles.itemDescription}>
+              {categoria.descripcion}
+            </Text>
+          )}
+        </View>
+      </View>
+      {selectedValue === categoria.id && (
+        <MaterialCommunityIcons name="check" size={24} color={categoria.color} />
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <Modal
@@ -82,9 +124,11 @@ export function CategoriaModal({
         <View style={styles.container}>
           <View style={styles.content}>
             <View style={styles.header}>
-              <Text variant="titleMedium" style={styles.title}>
-                Seleccionar Categoría
-              </Text>
+              <View style={styles.headerTextContainer}>
+                <Text variant="titleMedium" style={styles.title}>
+                  Seleccionar categoría
+                </Text>
+              </View>
               <TouchableOpacity onPress={onDismiss} style={styles.closeButton}>
                 <MaterialCommunityIcons name="close" size={24} color="#333333" />
               </TouchableOpacity>
@@ -119,7 +163,7 @@ export function CategoriaModal({
               </View>
             ) : (
               <ScrollView style={styles.scrollView}>
-                {categorias.length === 0 ? (
+                {categoriasFiltradas.length === 0 ? (
                   <View style={styles.emptyContainer}>
                     <MaterialCommunityIcons name="magnify" size={48} color="#999999" />
                     <Text variant="bodyMedium" style={styles.emptyText}>
@@ -131,43 +175,27 @@ export function CategoriaModal({
                       </Text>
                     )}
                   </View>
-                ) : (
-                  categorias.map((categoria) => (
-                    <TouchableOpacity
-                      key={categoria.id}
-                      onPress={() => handleSelect(categoria)}
-                      disabled={disabled}
-                      style={[
-                        styles.item,
-                        selectedValue === categoria.id && styles.itemSelected,
-                      ]}
-                    >
-                      <View style={styles.itemContent}>
-                        <MaterialCommunityIcons
-                          name={categoria.icono as any}
-                          size={24}
-                          color={categoria.color}
-                          style={styles.itemIcon}
-                        />
-                        <View style={styles.itemTextContainer}>
-                          <Text
-                            variant="bodyLarge"
-                            style={[styles.itemText, { color: categoria.color }]}
-                          >
-                            {categoria.nombre}
-                          </Text>
-                          {categoria.descripcion && (
-                            <Text variant="bodySmall" style={styles.itemDescription}>
-                              {categoria.descripcion}
-                            </Text>
-                          )}
-                        </View>
+                ) : mostrarAgrupado ? (
+                  <>
+                    {categoriasIngreso.length > 0 && (
+                      <View style={styles.section}>
+                        <Text variant="labelLarge" style={styles.sectionTitle}>
+                          Ingresos
+                        </Text>
+                        {categoriasIngreso.map(renderCategoriaItem)}
                       </View>
-                      {selectedValue === categoria.id && (
-                        <MaterialCommunityIcons name="check" size={24} color={categoria.color} />
-                      )}
-                    </TouchableOpacity>
-                  ))
+                    )}
+                    {categoriasEgreso.length > 0 && (
+                      <View style={styles.section}>
+                        <Text variant="labelLarge" style={styles.sectionTitle}>
+                          Egresos
+                        </Text>
+                        {categoriasEgreso.map(renderCategoriaItem)}
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  categoriasFiltradas.map(renderCategoriaItem)
                 )}
               </ScrollView>
             )}
@@ -211,6 +239,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   title: {
     fontWeight: 'bold',
@@ -294,5 +325,16 @@ const styles = StyleSheet.create({
   itemDescription: {
     marginTop: 4,
     color: '#666666',
+  },
+  section: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    color: '#6CB4EE',
+    fontWeight: '700',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#F5F5F5',
   },
 });

@@ -55,9 +55,9 @@ export function useCreateBulkGastoFijo() {
   const createBulk = async (request: BulkGastoFijoRequest) => {
     if (!accessToken) {
       setError('No hay sesión activa');
-      return;
+      return undefined;
     }
-    await run(
+    return run(
       async () => {
         const response = await gastoFijoService.createBulk(accessToken, request);
         setData(response);

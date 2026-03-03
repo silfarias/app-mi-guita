@@ -78,54 +78,51 @@ export default function GastosFijosScreen() {
   };
 
   const getMontoFijo = (item: PagoGastoFijoPorGastoFijoResponse): number => {
-    const mf = item.gastoFijo.montoFijo;
-    if (mf === null || mf === undefined || mf === '') return 0;
-    return typeof mf === 'string' ? parseFloat(mf) || 0 : mf;
+    const gf = item.gastoFijo;
+    const val = gf.montoEstimado ?? gf.montoFijo;
+    if (val === null || val === undefined || val === '') return 0;
+    return typeof val === 'string' ? parseFloat(val) || 0 : Number(val);
+  };
+
+  const getMontoPago = (item: PagoGastoFijoPorGastoFijoResponse): number => {
+    const m = item.pago.monto ?? item.pago.montoPago;
+    return m ?? 0;
   };
 
   const handleTogglePagado = (item: PagoGastoFijoPorGastoFijoResponse, pagado: boolean) => {
     if (item.pago.id == null) return;
     if (pagado) {
       const montoFijo = getMontoFijo(item);
-      const montoPagoActual = item.pago.montoPago ?? 0;
-      const esDebitoAutomatico = item.gastoFijo.esDebitoAutomatico && item.gastoFijo.medioPago;
+      const montoPagoActual = getMontoPago(item);
+      const esDebitoAutomatico = item.gastoFijo.esDebitoAutomatico;
 
-      // Débito automático: usar medio de pago del gasto fijo y monto fijo (sin abrir modal cuando hay monto)
+      // Débito automático con monto conocido: marcar sin abrir modal
       if (esDebitoAutomatico) {
-        const medioPagoId = item.gastoFijo.medioPago!.id;
         const monto = montoFijo > 0 ? montoFijo : montoPagoActual;
         if (monto > 0) {
-          ejecutarUpdatePago(item.pago.id, monto, true, medioPagoId);
+          ejecutarUpdatePago(item.pago.id, monto, true);
           return;
         }
-        // Débito automático pero monto 0: abrir modal solo para monto (medio ya está)
+        // Débito automático pero monto 0: abrir modal solo para monto
         setItemParaMarcarPagado(item);
         setIsMontoPagoModalVisible(true);
         return;
       }
 
-      // No es débito automático: siempre abrir modal para monto y medio de pago
+      // Siempre abrir modal para ingresar monto al marcar como pagado
       setItemParaMarcarPagado(item);
       setIsMontoPagoModalVisible(true);
     } else {
-      ejecutarUpdatePago(item.pago.id, item.pago.montoPago ?? 0, false);
+      ejecutarUpdatePago(item.pago.id, getMontoPago(item), false);
     }
   };
 
-  const ejecutarUpdatePago = async (
-    pagoId: number,
-    montoPago: number,
-    pagado: boolean,
-    medioPagoId?: number
-  ) => {
+  const ejecutarUpdatePago = async (pagoId: number, monto: number, pagado: boolean) => {
     try {
-      const body: { pagado: boolean; montoPago: number; medioPagoId?: number } = {
+      const body = {
+        monto: pagado ? Math.max(monto, 0.01) : Math.max(monto, 0),
         pagado,
-        montoPago: pagado ? Math.max(montoPago, 0.01) : Math.max(montoPago, 0),
       };
-      if (pagado && medioPagoId != null && medioPagoId > 0) {
-        body.medioPagoId = medioPagoId;
-      }
       await updatePagoGastoFijo(pagoId, body);
       Toast.show({
         type: 'success',
@@ -143,12 +140,10 @@ export default function GastosFijosScreen() {
     }
   };
 
-  const handleConfirmMontoPago = async (monto: number, medioPagoId?: number) => {
+  const handleConfirmMontoPago = async (monto: number) => {
     if (!itemParaMarcarPagado || itemParaMarcarPagado.pago.id == null) return;
     const id = itemParaMarcarPagado.pago.id;
-    const esDebito = itemParaMarcarPagado.gastoFijo.esDebitoAutomatico && itemParaMarcarPagado.gastoFijo.medioPago;
-    const medioId = esDebito ? itemParaMarcarPagado.gastoFijo.medioPago!.id : medioPagoId;
-    await ejecutarUpdatePago(id, monto, true, medioId);
+    await ejecutarUpdatePago(id, monto, true);
     setItemParaMarcarPagado(null);
   };
 
@@ -289,15 +284,6 @@ export default function GastosFijosScreen() {
         onConfirm={handleConfirmMontoPago}
         gastoNombre={itemParaMarcarPagado?.gastoFijo.nombre ?? ''}
         loading={updatingPago}
-        requireMedioPago={!itemParaMarcarPagado?.gastoFijo.esDebitoAutomatico}
-        medioPagoAsociado={
-          itemParaMarcarPagado?.gastoFijo.esDebitoAutomatico && itemParaMarcarPagado?.gastoFijo.medioPago
-            ? {
-                id: itemParaMarcarPagado.gastoFijo.medioPago!.id,
-                nombre: itemParaMarcarPagado.gastoFijo.medioPago!.nombre,
-              }
-            : undefined
-        }
       />
     </View>
   );

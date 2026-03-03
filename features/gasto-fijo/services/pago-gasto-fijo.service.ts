@@ -13,14 +13,14 @@ export class PagoGastoFijoService {
     });
   }
 
-  /** Obtener pagos de gastos fijos para un mes/año concreto (sin info inicial). */
+  /** GET /pago-gasto-fijo/por-mes?anio=&mes= (mes en español: ENERO, FEBRERO, MARZO, ...). */
   async getPagosPorMes(
     token: string,
     anio: number,
     mes: string
   ): Promise<PagoGastoFijoPorMesResponse> {
     const query = buildSearchQuery({ anio, mes });
-    return fetchAuthGet(token, `/pago-gasto-fijo/pagos-por-mes${query}`, {
+    return fetchAuthGet(token, `/pago-gasto-fijo/por-mes${query}`, {
       defaultError: "Error al obtener los pagos de gastos fijos del mes",
     });
   }

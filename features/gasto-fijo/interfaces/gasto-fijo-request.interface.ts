@@ -1,20 +1,24 @@
+/** Ítem para POST /gasto-fijo/bulk */
 export interface GastoFijoRequest {
   nombre: string;
-  montoFijo: number;
+  tipo: 'FIJO' | 'VARIABLE';
+  montoEstimado: number;
+  /** Fecha de vencimiento en formato YYYY-MM-DD */
+  diaVencimiento: string;
   categoriaId: number;
   esDebitoAutomatico: boolean;
-  medioPagoId?: number;
 }
 
 /** No enviar activo en POST; los nuevos se crean con activo: true. */
 export interface GastoFijoUpdateRequest {
   nombre?: string;
-  montoFijo?: number;
+  tipo?: 'FIJO' | 'VARIABLE';
+  montoEstimado?: number;
+  /** Fecha de vencimiento YYYY-MM-DD */
+  diaVencimiento?: string;
   categoriaId?: number;
-  /** Opcional en PATCH: activar/desactivar el gasto fijo. */
   activo?: boolean;
   esDebitoAutomatico?: boolean;
-  medioPagoId?: number;
 }
 
 export interface BulkGastoFijoRequest {

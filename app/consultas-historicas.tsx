@@ -5,9 +5,8 @@ import {
   MovimientosHistoricoList,
   ResumenHistoricoSection,
 } from '@/features/consultas-historicas/components';
-import { getFechasDelMes } from '@/features/consultas-historicas/utils/meses';
-import { usePagosPorInfoInicial } from '@/features/gasto-fijo/hooks/pago-gasto-fijo.hook';
-import { useInfoInicialPorUsuario } from '@/features/info-inicial/hooks/info-inicial.hook';
+import { getFechasDelMes, MESES } from '@/features/consultas-historicas/utils/meses';
+import { usePagosGastoFijoPorMes } from '@/features/gasto-fijo/hooks/pago-gasto-fijo.hook';
 import { useMovimientosConFiltros } from '@/features/movimiento/hooks/movimiento.hook';
 import { MovimientoFiltros } from '@/features/movimiento/interfaces/movimiento.interface';
 import { useReporteMensual } from '@/features/reporte/hooks/reporte.hook';
@@ -15,6 +14,17 @@ import { getCurrentMonth, getCurrentYear } from '@/utils/date';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+
+/** Últimos 12 meses para el selector. */
+function getMesesDisponibles(): { mes: string; anio: number }[] {
+  const now = new Date();
+  const result: { mes: string; anio: number }[] = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    result.push({ mes: MESES[d.getMonth()], anio: d.getFullYear() });
+  }
+  return result;
+}
 
 export default function ConsultasHistoricasScreen() {
   const [mesSeleccionado, setMesSeleccionado] = useState<string>(getCurrentMonth());
@@ -24,8 +34,6 @@ export default function ConsultasHistoricasScreen() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
-  const { data: infoIniciales, loading: loadingInfoInicial, fetch: fetchInfoIniciales } =
-    useInfoInicialPorUsuario();
   const { data: reporteData, loading: reporteLoading, error: reporteError, fetchReporteMensual } =
     useReporteMensual();
   const {
@@ -36,13 +44,11 @@ export default function ConsultasHistoricasScreen() {
     filtros,
   } = useMovimientosConFiltros();
 
-  const infoInicialesDisponibles = infoIniciales ?? [];
-  const infoInicialSeleccionado = infoInicialesDisponibles.find(
-    (info) => info.mes === mesSeleccionado && info.anio === anioSeleccionado
+  const mesesDisponibles = getMesesDisponibles();
+  const { pagos: gastosFijosPagos, fetchPagosPorMes } = usePagosGastoFijoPorMes(
+    anioSeleccionado,
+    mesSeleccionado
   );
-  const infoInicialId = infoInicialSeleccionado?.id ?? null;
-
-  const { pagos: gastosFijosPagos, fetchPagosPorInfoInicial } = usePagosPorInfoInicial(infoInicialId);
 
   const cargarMovimientos = useCallback(
     (pageNumber: number, size: number) => {
@@ -59,46 +65,29 @@ export default function ConsultasHistoricasScreen() {
   );
 
   useEffect(() => {
-    fetchInfoIniciales();
-    // fetchInfoIniciales no es estable (se recrea cada render), solo ejecutar al montar
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
     if (mesSeleccionado && anioSeleccionado) {
       fetchReporteMensual({ anio: anioSeleccionado, mes: mesSeleccionado });
       cargarMovimientos(1, pageSize);
       setPage(0);
+      fetchPagosPorMes();
     }
   }, [mesSeleccionado, anioSeleccionado]);
 
   useEffect(() => {
-    if (infoInicialId != null) {
-      fetchPagosPorInfoInicial();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [infoInicialId]);
-
-  useEffect(() => {
     if (mesSeleccionado && anioSeleccionado) {
       cargarMovimientos(1, pageSize);
       setPage(0);
     }
-    // Solo al cambiar pageSize
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSize]);
 
   const handleRefresh = useCallback(() => {
-    fetchInfoIniciales();
     if (mesSeleccionado && anioSeleccionado) {
       fetchReporteMensual({ anio: anioSeleccionado, mes: mesSeleccionado });
       cargarMovimientos(1, pageSize);
       setPage(0);
-      if (infoInicialId != null) {
-        fetchPagosPorInfoInicial();
-      }
+      fetchPagosPorMes();
     }
-  }, [fetchInfoIniciales, fetchReporteMensual, mesSeleccionado, anioSeleccionado, cargarMovimientos, pageSize, infoInicialId, fetchPagosPorInfoInicial]);
+  }, [fetchReporteMensual, mesSeleccionado, anioSeleccionado, cargarMovimientos, pageSize, fetchPagosPorMes]);
 
   const handleSeleccionarMes = (mes: string, anio: number) => {
     setMesSeleccionado(mes);
@@ -129,8 +118,8 @@ export default function ConsultasHistoricasScreen() {
     setPageSize(newPageSize);
   };
 
-  // Datos de movimientos
-  const movimientosDelMes = movimientosData?.data?.[0]?.movimientos ?? [];
+  // Datos de movimientos (search devuelve { data: MovimientoSearchResponse[] })
+  const movimientosDelMes = movimientosData?.data ?? [];
   const metadata = movimientosData?.metadata;
   const totalMovimientos =
     metadata?.count && metadata.count > 0 ? metadata.count : movimientosDelMes.length;
@@ -147,7 +136,7 @@ export default function ConsultasHistoricasScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPageNumber]);
 
-  const isLoading = reporteLoading || movimientosLoading || loadingInfoInicial;
+  const isLoading = reporteLoading || movimientosLoading;
   const errorMensaje = movimientosError ?? reporteError ?? undefined;
 
   return (
@@ -164,7 +153,7 @@ export default function ConsultasHistoricasScreen() {
         <MesSelectorCard
           mesSeleccionado={mesSeleccionado}
           anioSeleccionado={anioSeleccionado}
-          mesesDisponibles={infoInicialesDisponibles}
+          mesesDisponibles={mesesDisponibles}
           menuVisible={mesMenuVisible}
           onMenuOpen={() => setMesMenuVisible(true)}
           onMenuClose={() => setMesMenuVisible(false)}

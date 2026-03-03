@@ -1,19 +1,20 @@
 import { Categoria } from "@/features/categoria/interfaces/categoria.interface";
-import { MedioPago } from "@/features/medio-pago/interfaces/medio-pago.interface";
 
 export interface PagoGastoFijoRequest {
-  /** Opcional: si no se envía y el gasto tiene montoFijo > 0, el backend usa montoFijo automáticamente. */
-  montoPago?: number;
-  medioPagoId?: number;
+  /** Monto del pago (PATCH espera "monto"). */
+  monto: number;
   pagado: boolean;
+  cuentaId: number;
 }
 
 export interface PagoLite {
   /** Presente si ya existe registro de pago para ese mes; undefined si aún no se creó. */
   id?: number;
-  montoPago: number;
+  /** Monto del pago (endpoint por-mes devuelve "monto"). */
+  monto?: number;
+  /** Alternativa: mismo valor (otros endpoints pueden devolver "montoPago"). */
+  montoPago?: number;
   pagado: boolean;
-  medioPago?: MedioPago;
 }
 
 export interface PagoGastoFijoResponse {
@@ -26,11 +27,14 @@ export interface PagoGastoFijoResponse {
 export interface GastoFijoEnPago {
   id: number;
   nombre: string;
-  montoFijo: string | number;
+  /** API por-mes devuelve montoEstimado. */
+  montoEstimado?: number;
+  diaVencimiento?: string;
+  /** Compatibilidad con respuestas que envían montoFijo. */
+  montoFijo?: string | number;
   activo?: boolean;
   categoria: Categoria;
   esDebitoAutomatico: boolean;
-  medioPago?: MedioPago;
 }
 
 export interface PagoGastoFijoPorGastoFijoResponse {
@@ -38,14 +42,18 @@ export interface PagoGastoFijoPorGastoFijoResponse {
   pago: PagoLite;
 }
 
-/** Respuesta simplificada para pagos de gastos fijos por mes (sin info inicial). */
+/** Respuesta del endpoint GET /pago-gasto-fijo/por-mes (anio, mes, pagos). */
 export interface PagoGastoFijoPorMesResponse {
+  anio?: number;
+  mes?: string;
   pagos: PagoGastoFijoPorGastoFijoResponse[];
 }
 
 export interface PagoGastoFijoByIdResponse {
   id: number;
   gastoFijo: GastoFijoEnPago;
-  montoPago: number | string;
+  mes?: string;
+  anio?: number;
+  monto: number;
   pagado: boolean;
 }

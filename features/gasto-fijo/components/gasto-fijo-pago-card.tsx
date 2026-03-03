@@ -1,8 +1,8 @@
-import { CategoriaIconBadge, CardActionsMenu, MedioPagoLabel } from '@/common/components';
+import { CategoriaIconBadge, CardActionsMenu } from '@/common/components';
 import { PagoGastoFijoPorGastoFijoResponse } from '@/features/gasto-fijo/interfaces/pago-gasto-fijo.interface';
 import { formatCurrency } from '@/utils/currency';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Card, Checkbox, Text } from 'react-native-paper';
+import { Card, Checkbox, Text, Button } from 'react-native-paper';
 
 export interface GastoFijoPagoCardProps {
   item: PagoGastoFijoPorGastoFijoResponse;
@@ -29,13 +29,14 @@ export function GastoFijoPagoCard({
   pagadoDisabled = false,
 }: GastoFijoPagoCardProps) {
   const { gastoFijo, pago } = item;
-  const montoFijoVal = gastoFijo.montoFijo;
+  const montoGasto = gastoFijo.montoEstimado ?? gastoFijo.montoFijo;
+  const montoPagoVal = pago.monto ?? pago.montoPago;
   const monto =
-    montoFijoVal === null || montoFijoVal === undefined || montoFijoVal === ''
-      ? pago.montoPago
-      : typeof montoFijoVal === 'string'
-        ? parseFloat(montoFijoVal) || pago.montoPago
-        : montoFijoVal;
+    montoGasto === null || montoGasto === undefined || montoGasto === ''
+      ? (montoPagoVal ?? 0)
+      : typeof montoGasto === 'string'
+        ? parseFloat(montoGasto) || (montoPagoVal ?? 0)
+        : Number(montoGasto);
   const tienePagoId = pago.id != null;
 
   const menuActions = [
@@ -95,19 +96,10 @@ export function GastoFijoPagoCard({
               <Text variant="bodySmall" style={styles.categoria}>
                 {gastoFijo.categoria.nombre}
               </Text>
-              {gastoFijo.esDebitoAutomatico && gastoFijo.medioPago && (
-                <View style={styles.debitoRow}>
-                  <Text variant="labelSmall" style={styles.debitoLabel}>
-                    Débito automático
-                  </Text>
-                  <Text variant="labelSmall" style={styles.debitoSeparator}>·</Text>
-                  <MedioPagoLabel
-                    tipo={gastoFijo.medioPago.tipo}
-                    nombre={gastoFijo.medioPago.nombre}
-                    iconSize={12}
-                    iconColor="#6CB4EE"
-                  />
-                </View>
+              {gastoFijo.esDebitoAutomatico && (
+                <Text variant="labelSmall" style={styles.debitoLabel}>
+                  Débito automático
+                </Text>
               )}
             </View>
           </View>
@@ -136,15 +128,34 @@ export function GastoFijoPagoCard({
           style={styles.pagadoRow}
           activeOpacity={0.7}
         >
-          <Text variant="bodySmall" style={styles.pagadoLabel}>
-            Pagado
-          </Text>
-          <Checkbox
-            status={pago.pagado ? 'checked' : 'unchecked'}
-            onPress={handleTogglePagado}
-            disabled={pagadoDisabled || !tienePagoId}
-            color="#6CB4EE"
-          />
+          {pago.pagado ? (
+            <>
+              <Text variant="bodySmall" style={styles.pagadoLabel}>
+                Pagado
+              </Text>
+              <Checkbox
+                status="checked"
+                onPress={handleTogglePagado}
+                disabled={pagadoDisabled || !tienePagoId}
+                color="#6CB4EE"
+              />
+            </>
+          ) : (
+            <>
+              <Text variant="bodySmall" style={styles.pagadoLabel}>
+                Pendiente
+              </Text>
+              <Button
+                mode="contained"
+                onPress={handleTogglePagado}
+                disabled={pagadoDisabled || !tienePagoId}
+                compact
+                style={styles.marcarPagadoButton}
+              >
+                Pagar
+              </Button>
+            </>
+          )}
         </TouchableOpacity>
       </Card.Content>
     </Card>
@@ -196,18 +207,10 @@ const styles = StyleSheet.create({
   categoria: {
     color: '#666666',
   },
-  debitoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
-  },
   debitoLabel: {
     color: '#6CB4EE',
     fontWeight: '600',
-  },
-  debitoSeparator: {
-    color: '#999999',
+    marginTop: 4,
   },
   right: {
     alignItems: 'flex-end',
@@ -237,5 +240,8 @@ const styles = StyleSheet.create({
   },
   pagadoLabel: {
     color: '#666666',
+  },
+  marcarPagadoButton: {
+    alignSelf: 'flex-start',
   },
 });

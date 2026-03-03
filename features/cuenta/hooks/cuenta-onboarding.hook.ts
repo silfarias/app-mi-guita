@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { useAsyncRun } from '@/hooks/use-async-run';
-import { CuentaBulkItem, CuentaService } from '../services/cuenta.service';
+import { CuentaRequest } from '../interfaces/cuenta.interface';
+import { CuentaService } from '../services/cuenta.service';
 
 const cuentaService = new CuentaService();
 
 export function useCuentaOnboarding() {
+  
   const accessToken = useAuthStore((s) => s.accessToken);
   const { loading, error, setError, run } = useAsyncRun();
   const [completed, setCompleted] = useState(false);
 
-  const submitCuentas = async (cuentas: CuentaBulkItem[]) => {
+  const submitCuentas = async (cuentas: CuentaRequest[]) => {
     if (!accessToken) {
       setError('No hay sesión activa');
       return;

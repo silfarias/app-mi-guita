@@ -11,6 +11,8 @@ export interface SignupRequest {
 
 export interface SignupResponse {
     access_token: string;
+    refresh_token: string;
+    expires_in: number;
     usuario: Usuario;
     message: string;
 }

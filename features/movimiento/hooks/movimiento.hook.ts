@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { useAuthStore } from '../../../store/auth.store';
-import { MovimientoRequest, MovimientoResponse, MovimientoSearchResponse, MovimientosPorInfoSearchResponse, TipoMovimientoEnum, MovimientoFiltros } from '../interfaces/movimiento.interface';
+import {
+  MovimientoRequest,
+  MovimientoResponse,
+  MovimientoSearchResponse,
+  MovimientoFiltros,
+  MovimientosAgrupadoPorCuentaResponse,
+  TipoMovimientoEnum,
+} from '../interfaces/movimiento.interface';
+import { SearchResponse } from '@/types/api.types';
 import { MovimientoService } from '../services/movimiento.service';
 import { useAsyncRun } from '../../../hooks/use-async-run';
 
@@ -20,13 +28,12 @@ export function useMovimientoForm() {
   const { control, handleSubmit, formState: { errors }, reset: resetForm, watch, setValue } = useForm<MovimientoRequest>({
     mode: 'onSubmit',
     defaultValues: {
-      infoInicialId: 0,
+      cuentaId: 0,
       fecha: new Date().toISOString().split('T')[0],
       tipoMovimiento: TipoMovimientoEnum.EGRESO,
       descripcion: '',
       categoriaId: 0,
       monto: 0,
-      medioPagoId: 0,
     },
   });
 
@@ -71,13 +78,13 @@ export function useMovimientoForm() {
 }
 
 /**
- * Hook para obtener movimientos por info inicial (mes actual).
- * Retorna los movimientos agrupados por info inicial.
+ * Hook para obtener movimientos agrupados por cuenta.
+ * Usa GET /movimiento/agrupado.
  */
-export function useMovimientosPorInfo() {
+export function useMovimientosAgrupadosPorCuenta() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const { loading, error, setError, run } = useAsyncRun();
-  const [data, setData] = useState<MovimientosPorInfoSearchResponse | null>(null);
+  const [data, setData] = useState<MovimientosAgrupadoPorCuentaResponse | null>(null);
 
   const fetchMovimientos = async () => {
     if (!accessToken) {
@@ -86,11 +93,11 @@ export function useMovimientosPorInfo() {
     }
     await run(
       async () => {
-        const response = await movimientoService.getByInfoInicial(accessToken);
+        const response = await movimientoService.agrupado(accessToken);
         setData(response);
         return response;
       },
-      { errorFallback: 'Error al obtener los movimientos', logLabel: 'fetchMovimientosPorInfo' }
+      { errorFallback: 'Error al obtener los movimientos', logLabel: 'fetchMovimientosAgrupado' }
     );
   };
 
@@ -202,12 +209,12 @@ export function useDeleteMovimiento() {
 
 /**
  * Hook para obtener movimientos con filtros.
- * Retorna los movimientos filtrados según los parámetros proporcionados.
+ * Usa GET /movimiento/search con query params.
  */
 export function useMovimientosConFiltros(initialFiltros?: MovimientoFiltros) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const { loading, error, setError, run } = useAsyncRun();
-  const [data, setData] = useState<MovimientosPorInfoSearchResponse | null>(null);
+  const [data, setData] = useState<SearchResponse<MovimientoSearchResponse> | null>(null);
   const [filtros, setFiltros] = useState<MovimientoFiltros | undefined>(initialFiltros);
 
   const fetchMovimientos = async (nuevosFiltros?: MovimientoFiltros) => {

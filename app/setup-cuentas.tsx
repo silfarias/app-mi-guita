@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { Button, HelperText, Text } from 'react-native-paper';
 
@@ -28,6 +28,12 @@ export default function SetupCuentasScreen() {
   ]);
   const { submitCuentas, loading, error, completed } = useCuentaOnboarding();
 
+  useEffect(() => {
+    if (completed) {
+      router.replace('/setup-gastos-fijos' as any);
+    }
+  }, [completed]);
+
   const handleChange = (id: number, field: keyof LocalCuenta, value: string) => {
     setCuentas((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
   };
@@ -53,9 +59,6 @@ export default function SetupCuentasScreen() {
         saldoInicial: Number(c.saldoInicial) || 0,
       }))
     );
-    if (!error && !loading) {
-      router.replace('/(tabs)' as any);
-    }
   };
 
   return (
@@ -70,7 +73,7 @@ export default function SetupCuentasScreen() {
 
         <View style={styles.card}>
           <Text variant="titleMedium" style={styles.badge}>
-            Paso 1 de 3
+            Paso 1 de 4
           </Text>
           <Text variant="headlineSmall" style={styles.title}>
             ¿Dónde tenés tu plata?

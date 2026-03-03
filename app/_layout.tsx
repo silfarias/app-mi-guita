@@ -27,7 +27,9 @@ export default function RootLayout() {
           <Stack.Screen name="register" options={{ headerShown: false }} />
           <Stack.Screen name="profile" options={{ headerShown: false }} />
           <Stack.Screen name="consultas-historicas" options={{ headerShown: false }} />
-          <Stack.Screen name="info-inicial-mes" options={{ headerShown: false }} />
+          <Stack.Screen name="setup-gastos-fijos" options={{ headerShown: false }} />
+          <Stack.Screen name="setup-presupuestos" options={{ headerShown: false }} />
+          <Stack.Screen name="setup-listo" options={{ headerShown: false }} />
 
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>

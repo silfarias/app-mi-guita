@@ -62,7 +62,7 @@ export default function ExploreScreen() {
     }
   }, [pageSize]);
 
-  const movimientosDelMes = movimientosData?.data?.[0]?.movimientos || [];
+  const movimientosDelMes = movimientosData?.data ?? [];
   const metadata = movimientosData?.metadata;
   const totalMovimientos =
     metadata?.count && metadata.count > 0 ? metadata.count : movimientosDelMes.length;
@@ -130,10 +130,9 @@ export default function ExploreScreen() {
       pageNumber: 1,
       pageSize: pageSize,
       sortBy: 'fecha',
-      infoInicialId: filtrosTemporales.infoInicialId,
+      cuentaId: filtrosTemporales.cuentaId,
       tipoMovimiento: filtrosTemporales.tipoMovimiento,
       categoriaId: filtrosTemporales.categoriaId,
-      medioPagoId: filtrosTemporales.medioPagoId,
       fechaDesde: filtrosTemporales.fechaDesde,
       fechaHasta: filtrosTemporales.fechaHasta,
     } as MovimientoFiltros);
@@ -162,10 +161,9 @@ export default function ExploreScreen() {
 
   const tieneFiltrosActivos =
     filtros &&
-    (filtros.infoInicialId !== undefined ||
+    (filtros.cuentaId !== undefined ||
       filtros.tipoMovimiento !== undefined ||
       filtros.categoriaId !== undefined ||
-      filtros.medioPagoId !== undefined ||
       filtros.fechaDesde !== undefined ||
       filtros.fechaHasta !== undefined);
 

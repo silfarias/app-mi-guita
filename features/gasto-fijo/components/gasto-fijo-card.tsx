@@ -24,11 +24,9 @@ export function GastoFijoCard({
   showMenu = true,
 }: GastoFijoCardProps) {
   const monto =
-    gastoFijo.montoFijo === null || gastoFijo.montoFijo === undefined || gastoFijo.montoFijo === ''
-      ? 0
-      : typeof gastoFijo.montoFijo === 'string'
-        ? parseFloat(gastoFijo.montoFijo) || 0
-        : gastoFijo.montoFijo;
+    gastoFijo.montoEstimado != null
+      ? Number(gastoFijo.montoEstimado)
+      : 0;
 
   const menuActions = [
     ...(onEdit

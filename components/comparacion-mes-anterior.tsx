@@ -8,6 +8,10 @@ interface ComparacionMesAnteriorProps {
 }
 
 export function ComparacionMesAnterior({ comparacion }: ComparacionMesAnteriorProps) {
+  const variacionIngresos = Number(comparacion?.variacionIngresos) || 0;
+  const variacionEgresos = Number(comparacion?.variacionEgresos) || 0;
+  const variacionBalance = Number(comparacion?.variacionBalance) || 0;
+
   return (
     <Card style={styles.comparacionCard}>
       <Card.Content>
@@ -26,11 +30,11 @@ export function ComparacionMesAnterior({ comparacion }: ComparacionMesAnteriorPr
               variant="bodyMedium"
               style={[
                 styles.comparacionValue,
-                comparacion.variacionIngresos >= 0 ? styles.comparacionPositiva : styles.comparacionNegativa,
+                variacionIngresos >= 0 ? styles.comparacionPositiva : styles.comparacionNegativa,
               ]}
             >
-              {comparacion.variacionIngresos >= 0 ? '+' : ''}
-              {comparacion.variacionIngresos.toFixed(1)}%
+              {variacionIngresos >= 0 ? '+' : ''}
+              {variacionIngresos.toFixed(1)}%
             </Text>
           </View>
           <View style={styles.comparacionItem}>
@@ -41,11 +45,11 @@ export function ComparacionMesAnterior({ comparacion }: ComparacionMesAnteriorPr
               variant="bodyMedium"
               style={[
                 styles.comparacionValue,
-                comparacion.variacionEgresos >= 0 ? styles.comparacionPositiva : styles.comparacionNegativa,
+                variacionEgresos >= 0 ? styles.comparacionPositiva : styles.comparacionNegativa,
               ]}
             >
-              {comparacion.variacionEgresos >= 0 ? '+' : ''}
-              {comparacion.variacionEgresos.toFixed(1)}%
+              {variacionEgresos >= 0 ? '+' : ''}
+              {variacionEgresos.toFixed(1)}%
             </Text>
           </View>
           <View style={styles.comparacionItem}>
@@ -56,11 +60,11 @@ export function ComparacionMesAnterior({ comparacion }: ComparacionMesAnteriorPr
               variant="bodyMedium"
               style={[
                 styles.comparacionValue,
-                comparacion.variacionBalance >= 0 ? styles.comparacionPositiva : styles.comparacionNegativa,
+                variacionBalance >= 0 ? styles.comparacionPositiva : styles.comparacionNegativa,
               ]}
             >
-              {comparacion.variacionBalance >= 0 ? '+' : ''}
-              {comparacion.variacionBalance.toFixed(1)}%
+              {variacionBalance >= 0 ? '+' : ''}
+              {variacionBalance.toFixed(1)}%
             </Text>
           </View>
         </View>

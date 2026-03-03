@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useAuthStore } from '../../../store/auth.store';
 import {
@@ -97,6 +97,12 @@ export function usePagosGastoFijoPorMes(anio: number | null | undefined, mes: st
       }
     );
   };
+
+  useEffect(() => {
+    if (anio != null && mes && accessToken) {
+      fetchPagosPorMes();
+    }
+  }, [anio, mes]);
 
   return {
     data,

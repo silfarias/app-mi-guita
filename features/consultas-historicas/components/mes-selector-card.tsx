@@ -1,4 +1,9 @@
-import { InfoInicialResponse } from '@/features/info-inicial/interfaces/info-inicial.interface';
+/** Opción de mes/año para el selector (sin id de info inicial). */
+export interface MesAnioOption {
+  mes: string;
+  anio: number;
+}
+
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Card, Menu, Text } from 'react-native-paper';
@@ -7,7 +12,7 @@ import { MESES } from '../utils/meses';
 export interface MesSelectorCardProps {
   mesSeleccionado: string;
   anioSeleccionado: number;
-  mesesDisponibles: InfoInicialResponse[];
+  mesesDisponibles: MesAnioOption[];
   menuVisible: boolean;
   onMenuOpen: () => void;
   onMenuClose: () => void;
@@ -57,11 +62,11 @@ export function MesSelectorCard({
               </Text>
             </View>
           ) : (
-            mesesOrdenados.map((info) => (
+            mesesOrdenados.map((item) => (
               <Menu.Item
-                key={info.id}
-                onPress={() => onSeleccionarMes(info.mes, info.anio)}
-                title={`${info.mes} ${info.anio}`}
+                key={`${item.mes}-${item.anio}`}
+                onPress={() => onSeleccionarMes(item.mes, item.anio)}
+                title={`${item.mes} ${item.anio}`}
                 titleStyle={styles.menuItemText}
               />
             ))
